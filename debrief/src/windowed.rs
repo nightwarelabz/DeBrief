@@ -33,7 +33,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 
-use c35::glam::{Vec2, Vec3};
+use c35::glam::Vec3;
 use c35::locomotion::{AnimInput, Animator, Controller};
 use c35::operator::{build_body_awareness, build_viewmodel, OperatorMesh, PoseFrame, ViewmodelConfig, ViewmodelPose, VIEWMODEL_EYE_Y};
 use c35::scene::CameraPose;
@@ -46,7 +46,8 @@ use winit::window::{CursorGrabMode, Window, WindowId};
 
 use crate::{
     block::Block, configure_scene, drive_route, echo_pose, flat_ground, follow_pose, hero_pose,
-    merge_meshes, op_mesh, patrol_legs, print_reality, soldier, Reality,
+    light_read_row, light_sample, map_read, merge_meshes, new_patrol, op_mesh, print_reality,
+    readback_bytes, restart_patrol, soldier, Reality, LIGHT_READ_HEADER,
 };
 
 const STEP: f32 = 1.0 / 60.0;
@@ -106,8 +107,8 @@ struct DriveRun {
 }
 
 impl DriveRun {
-    fn new(which: &'static str) -> DriveRun {
-        let (start, legs) = drive_route(which);
+    fn new(which: &'static str) -> Option<DriveRun> {
+        let (start, legs) = drive_route(which)?;
         let ctrl = Controller::new(start, legs);
         let mut anim = Animator::new();
         anim.set_ground_fn(Some(flat_ground));
@@ -123,19 +124,17 @@ impl DriveRun {
             carry: true,
         };
         let last_frame = anim.update(0.0, &warm);
-        DriveRun {
+        Some(DriveRun {
             which,
             ctrl,
             anim,
             anchor: Vec3::new(a0.pos.x, 0.0, a0.pos.y),
             last_frame,
-            csv: String::from(
-                "frame,t,op_x,op_z,gait,speed,exposure,lit,lamp,soldier_x,soldier_z,soldier_yaw_deg,facing_dot,soldier_dist\n",
-            ),
+            csv: String::from(LIGHT_READ_HEADER),
             frames: 0,
             lit_frames: 0,
             settle: 0,
-        }
+        })
     }
 }
 
@@ -208,11 +207,14 @@ struct App {
     proof_frames_at_stage: u64,
     smoke_secs: Option<f32>,
     should_exit: bool,
+    /// Non-zero when a proof capture failed. Applied after GPU teardown;
+    /// exiting earlier skips that order and the process segfaults on the way out.
+    exit_code: i32,
 }
 
 impl App {
     fn new(blk: Block, world: WorldState, params: &Params) -> App {
-        let patrol_ctrl = Controller::new(Vec2::new(-8.6, -40.0), patrol_legs());
+        let patrol_ctrl = new_patrol();
         let mut patrol_anim = Animator::new();
         patrol_anim.set_ground_fn(Some(flat_ground));
         // Warm the patrol standing at his loop's start (headless rig).
@@ -260,6 +262,7 @@ impl App {
             proof_frames_at_stage: 0,
             smoke_secs: params.smoke_secs,
             should_exit: false,
+            exit_code: 0,
         }
     }
 
@@ -319,8 +322,12 @@ impl App {
         if self.drive.is_some() {
             return;
         }
+        let Some(run) = DriveRun::new(which) else {
+            eprintln!("[drive] unknown crossing '{which}' (open|shadow)");
+            return;
+        };
         println!("[drive] {which} crossing — live, follow camera");
-        self.drive = Some(DriveRun::new(which));
+        self.drive = Some(run);
         self.mode = CamMode::Drive;
     }
 
@@ -363,12 +370,13 @@ impl App {
     fn step_sim(&mut self) {
         self.sim_time += STEP;
         self.sim_steps += 1;
-        // The patrol's step (loop restarts seamlessly, as headless).
+        // Restart before this step's update, so the arrival frame kept
+        // the pose that step produced. The headless drive does the same.
+        if self.patrol_ctrl.agent().done {
+            restart_patrol(&mut self.patrol_ctrl);
+        }
         let p_input = self.patrol_ctrl.update(STEP);
         self.patrol_frame = self.patrol_anim.update(STEP, &p_input);
-        if self.patrol_ctrl.agent().done {
-            self.patrol_ctrl = Controller::new(Vec2::new(-8.6, -40.0), patrol_legs());
-        }
         let Some(d) = &mut self.drive else { return };
         let input = d.ctrl.update(STEP);
         d.last_frame = d.anim.update(STEP, &input);
@@ -378,35 +386,14 @@ impl App {
         // THE LIGHT READ — the same field that baked the street,
         // sampled at the operator's chest, logged against the
         // patrol's facing. Not an AI: a measurement.
-        let sample_h = 1.15 - 0.35 * input.crouch;
-        let sample = Vec3::new(a.pos.x, sample_h, a.pos.y);
+        let sample = light_sample(a.pos, input.crouch);
         let exposure = self.blk.field.exposure(sample);
         let lit = self.blk.field.lit(sample);
         if lit {
             d.lit_frames += 1;
         }
         let lamp = self.blk.field.nearest_lamp(sample).map(|(idx, _)| idx).unwrap_or(usize::MAX);
-        let s_fwd = Vec3::new(pa.yaw.sin(), 0.0, pa.yaw.cos());
-        let to_op = Vec3::new(a.pos.x - pa.pos.x, 0.0, a.pos.y - pa.pos.y);
-        let dist = to_op.length();
-        let facing_dot = if dist > 1e-4 { s_fwd.dot(to_op / dist) } else { 0.0 };
-        d.csv.push_str(&format!(
-            "{},{:.3},{:.2},{:.2},{},{:.2},{:.3},{},{},{:.2},{:.2},{:.1},{:.3},{:.2}\n",
-            i,
-            i as f32 / 60.0,
-            a.pos.x,
-            a.pos.y,
-            a.gait.name(),
-            a.speed,
-            exposure,
-            if lit { 1 } else { 0 },
-            lamp,
-            pa.pos.x,
-            pa.pos.y,
-            pa.yaw.to_degrees(),
-            facing_dot,
-            dist
-        ));
+        d.csv.push_str(&light_read_row(i, &a, exposure, lit, lamp, &pa));
         d.frames += 1;
         // The follow anchor's smoothing, the headless rig's own law.
         let target_anchor = Vec3::new(a.pos.x, d.anim.ground_y(), a.pos.y);
@@ -485,13 +472,17 @@ impl App {
     /// in the surface's own format, read back to a PNG (channel
     /// order corrected when the surface is BGRA — the headless
     /// rig's format is RGBA, and the file must read the same).
-    fn capture(&mut self, path: &str) {
+    fn capture(&mut self, path: &str) -> Result<(), String> {
         let pose = self.current_pose();
         let world = self.world;
         let t = self.sim_time;
         let (w, h) = self.size;
-        let Some(renderer) = &mut self.renderer else { return };
-        let Some(mesh) = &self.last_mesh else { return };
+        let Some(renderer) = &mut self.renderer else {
+            return Err("capture before the renderer exists".to_string());
+        };
+        let Some(mesh) = &self.last_mesh else {
+            return Err("capture before the first frame".to_string());
+        };
         renderer.update_operator(mesh);
         let format = renderer.output_format();
         let tex = renderer.device.create_texture(&c35::wgpu::TextureDescriptor {
@@ -510,10 +501,10 @@ impl App {
             let _ = renderer.device.poll(c35::wgpu::PollType::Wait { submission_index: None, timeout: None });
         }
         // Readback (the headless save_png's shape, format-aware).
-        let bpr = (w * 4).div_ceil(256) * 256;
+        let (bpr, size) = readback_bytes(w, h)?;
         let buf = renderer.device.create_buffer(&c35::wgpu::BufferDescriptor {
             label: Some("capture readback"),
-            size: (bpr * h) as u64,
+            size,
             usage: c35::wgpu::BufferUsages::MAP_READ | c35::wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -538,8 +529,7 @@ impl App {
             c35::wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
         );
         renderer.queue.submit([encoder.finish()]);
-        buf.slice(..).map_async(c35::wgpu::MapMode::Read, |_| {});
-        let _ = renderer.device.poll(c35::wgpu::PollType::Wait { submission_index: None, timeout: None });
+        map_read(&renderer.device, &buf)?;
         let range = buf.slice(..).get_mapped_range();
         let swap_rb = format == c35::wgpu::TextureFormat::Bgra8UnormSrgb;
         let mut pixels = Vec::with_capacity((w * h * 4) as usize);
@@ -547,7 +537,7 @@ impl App {
             let start = row * bpr as usize;
             let line = &range[start..start + (w * 4) as usize];
             if swap_rb {
-                for px in line.chunks_exact(4) {
+                for px in line.as_chunks::<4>().0 {
                     pixels.extend_from_slice(&[px[2], px[1], px[0], px[3]]);
                 }
             } else {
@@ -556,31 +546,38 @@ impl App {
         }
         drop(range);
         buf.unmap();
-        let img = image::RgbaImage::from_raw(w, h, pixels).expect("pixel buffer size");
-        img.save(path).expect("save png");
+        let img = image::RgbaImage::from_raw(w, h, pixels).ok_or("pixel buffer size")?;
+        img.save(path).map_err(|e| format!("save {path}: {e}"))?;
         println!("saved {path}");
+        Ok(())
+    }
+
+    fn capture_checked(&mut self, path: &str) {
+        if let Err(e) = self.capture(path) {
+            eprintln!("{e}");
+            if self.proof != ProofStage::Off {
+                self.exit_code = 1;
+                self.should_exit = true;
+            }
+        }
     }
 
     fn proof_advance(&mut self) {
         match self.proof {
-            ProofStage::F1Wait => {
-                if self.frame_count - self.proof_frames_at_stage >= 30 {
-                    let p = format!("{}/window-f1-hero.png", self.out_dir);
-                    self.capture(&p);
-                    self.mode = CamMode::Bookmark(echo_pose());
-                    self.proof = ProofStage::F2Wait;
-                    self.proof_frames_at_stage = self.frame_count;
-                    println!("[proof] F1 captured; F2 (patrol-echo rig) held");
-                }
+            ProofStage::F1Wait if self.frame_count - self.proof_frames_at_stage >= 30 => {
+                let p = format!("{}/window-f1-hero.png", self.out_dir);
+                self.capture_checked(&p);
+                self.mode = CamMode::Bookmark(echo_pose());
+                self.proof = ProofStage::F2Wait;
+                self.proof_frames_at_stage = self.frame_count;
+                println!("[proof] F1 captured; F2 (patrol-echo rig) held");
             }
-            ProofStage::F2Wait => {
-                if self.frame_count - self.proof_frames_at_stage >= 30 {
-                    let p = format!("{}/window-f2-echo.png", self.out_dir);
-                    self.capture(&p);
-                    self.proof = ProofStage::OpenDrive;
-                    println!("[proof] F2 captured; open crossing next");
-                    self.start_drive("open");
-                }
+            ProofStage::F2Wait if self.frame_count - self.proof_frames_at_stage >= 30 => {
+                let p = format!("{}/window-f2-echo.png", self.out_dir);
+                self.capture_checked(&p);
+                self.proof = ProofStage::OpenDrive;
+                println!("[proof] F2 captured; open crossing next");
+                self.start_drive("open");
             }
             _ => {}
         }
@@ -673,7 +670,7 @@ impl App {
                     self.frame_count += 1;
 
                     // The ledger rides the title bar.
-                    if self.frame_count % 30 == 0 {
+                    if self.frame_count.is_multiple_of(30) {
                         let (shadow_ms, scene_ms) = renderer.drain_gpu_samples();
                         let gpu = if scene_ms.is_empty() {
                             "gpu n/a".to_string()
@@ -753,9 +750,13 @@ pub fn run(blk: Block, reality: &Reality, params: Params) {
     // alive: surface, then device, then window. The loop then drops
     // last with nothing GPU or window left behind. Teardown-only;
     // no behaviour, scene, or presentation change.
+    let code = app.exit_code;
     drop(app.surface.take());
     drop(app.renderer.take());
     drop(app.window.take());
+    if code != 0 {
+        std::process::exit(code);
+    }
 }
 
 impl ApplicationHandler for App {
@@ -885,7 +886,7 @@ impl ApplicationHandler for App {
                         KeyCode::KeyP => {
                             self.capture_count += 1;
                             let p = format!("{}/window-capture-{}.png", self.out_dir, self.capture_count);
-                            self.capture(&p);
+                            self.capture_checked(&p);
                             return;
                         }
                         KeyCode::KeyC if !repeat => {
@@ -935,5 +936,40 @@ impl ApplicationHandler for App {
         if let Some(window) = &self.window {
             window.request_redraw();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn roundtrip(pose: CameraPose) {
+        let fly = FlyCam::from_pose(&pose);
+        let back = fly.pose();
+        let dir = (pose.target - pose.eye).normalize();
+        let got = (back.target - back.eye).normalize();
+        assert!(dir.distance(got) < 1e-4, "look {dir:?} came back as {got:?}");
+        assert!(back.eye.distance(pose.eye) < 1e-4);
+        assert!((back.fov_y_deg - pose.fov_y_deg).abs() < 1e-6);
+    }
+
+    #[test]
+    fn bookmarks_roundtrip_through_the_fly_cam() {
+        roundtrip(hero_pose());
+        roundtrip(echo_pose());
+    }
+
+    #[test]
+    fn straight_down_does_not_produce_a_zero_forward() {
+        let pose = CameraPose {
+            eye: Vec3::new(0.0, 4.0, 0.0),
+            target: Vec3::new(0.0, 1.0, 0.0),
+            fov_y_deg: 50.0,
+        };
+        let fly = FlyCam::from_pose(&pose);
+        let fwd = fly.forward();
+        assert!(fwd.is_finite());
+        assert!((fwd.length() - 1.0).abs() < 1e-4);
+        assert!(fwd.y < -0.9);
     }
 }

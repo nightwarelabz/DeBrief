@@ -149,6 +149,7 @@ impl<'a> B<'a> {
     }
 
     /// A window quad standing slightly proud of a facade.
+    #[allow(clippy::too_many_arguments)]
     fn window(&mut self, x: f32, facing: f32, zc: f32, yc: f32, w: f32, h: f32, lit: bool) {
         let px = x + facing * 0.03; // proud toward the street
         let n = Vec3::new(facing, 0.0, 0.0);

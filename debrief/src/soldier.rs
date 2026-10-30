@@ -46,6 +46,7 @@ fn spec(
 }
 
 /// The soldier, as geometry: ~90 parts on the shared skeleton.
+#[allow(clippy::vec_init_then_push)]
 pub fn soldier_parts() -> Vec<PartSpec> {
     use region::*;
     use Bone::*;
@@ -299,3 +300,105 @@ pub fn pose_vocabulary() -> Vec<(&'static str, PoseFrame)> {
     ]
 }
 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use c35::glam::Vec3;
+    use c35::operator::{Bone, PoseFrame};
+
+    #[test]
+    fn the_mark_is_on_the_left_and_nowhere_else() {
+        let parts = soldier_parts();
+        let armbands: Vec<_> = parts
+            .iter()
+            .filter(|p| p.name.contains("armband"))
+            .collect();
+        assert_eq!(armbands.len(), 1);
+        assert_eq!(armbands[0].bone, Bone::UpperArmL);
+        assert!(armbands[0].center.x > 0.0);
+        let red: Vec<_> = parts.iter().filter(|p| p.name.contains("red")).collect();
+        assert_eq!(red.len(), 1);
+        assert!(
+            red[0].center.x > 0.0,
+            "the red pauldron is the left shoulder"
+        );
+        assert!(parts
+            .iter()
+            .all(|p| p.size.x > 0.0 && p.size.y > 0.0 && p.size.z > 0.0));
+    }
+
+    #[test]
+    fn the_rifle_rides_the_right_hand() {
+        let rifle: Vec<_> = soldier_parts()
+            .into_iter()
+            .filter(|p| p.name.starts_with("rifle"))
+            .collect();
+        assert!(rifle.len() >= 5, "the rifle is more than a single box");
+        assert!(rifle
+            .iter()
+            .all(|p| p.bone == Bone::HandR && p.center.x < 0.0));
+    }
+
+    #[test]
+    fn the_split_skirt_leaves_a_gap_at_the_centre_back() {
+        let parts = soldier_parts();
+        let left = parts.iter().find(|p| p.name == "skirt rear L").unwrap();
+        let right = parts.iter().find(|p| p.name == "skirt rear R").unwrap();
+        let left_inner = left.center.x - left.size.x * 0.5;
+        let right_inner = right.center.x + right.size.x * 0.5;
+        assert!(
+            left_inner > right_inner + 0.01,
+            "the centre-back gap is not open geometry"
+        );
+    }
+
+    #[test]
+    fn halt_raises_the_left_palm_and_keeps_the_rifle_down() {
+        let halt = pose_halt();
+        assert!(
+            halt.get(Bone::UpperArmL).x < -20.0,
+            "left arm is the checkpoint verb"
+        );
+        assert!(
+            halt.get(Bone::UpperArmR).x > -10.0,
+            "the rifle arm stays low"
+        );
+        let names: Vec<_> = pose_vocabulary().into_iter().map(|(n, _)| n).collect();
+        assert_eq!(
+            names,
+            ["low-ready", "firing", "kneel-aim", "reload", "halt"]
+        );
+    }
+
+    #[test]
+    fn kneel_aim_is_the_crouch_legs_under_the_aim_arms() {
+        let kneel = pose_kneel_aim();
+        let crouch = PoseFrame::from_pose(c35::OperatorPose::Crouch);
+        let aim = PoseFrame::from_pose(c35::OperatorPose::Aim);
+        assert_eq!(kneel.get(Bone::ThighL), crouch.get(Bone::ThighL));
+        assert_eq!(kneel.get(Bone::ShinR), crouch.get(Bone::ShinR));
+        assert_eq!(kneel.get(Bone::UpperArmR), aim.get(Bone::UpperArmR));
+        assert_eq!(kneel.get(Bone::ForearmL), aim.get(Bone::ForearmL));
+        assert!((kneel.root_y - crouch.root_y).abs() < 1e-5);
+    }
+
+    #[test]
+    fn the_posed_mesh_indexes_every_part() {
+        let mesh = soldier_mesh(&pose_low_ready(), Vec3::ZERO, 0.0, 90.0);
+        assert!(mesh
+            .indices
+            .iter()
+            .all(|i| (*i as usize) < mesh.vertices.len()));
+        let tris: u32 = mesh.parts.iter().map(|p| p.triangles).sum();
+        assert_eq!(tris as usize * 3, mesh.indices.len());
+        assert!(mesh
+            .parts
+            .iter()
+            .any(|p| p.bone == Bone::UpperArmL && p.name.contains("armband")));
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|v| v.position.iter().all(|c| c.is_finite())));
+    }
+}

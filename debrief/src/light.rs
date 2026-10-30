@@ -150,3 +150,115 @@ impl LightField {
         best
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{segment_blocked, Lamp, LightField, Occluder, LIT_THRESHOLD};
+    use c35::glam::Vec3;
+
+    fn box_between(min: (f32, f32, f32), max: (f32, f32, f32)) -> Occluder {
+        Occluder::new(
+            Vec3::new(min.0, min.1, min.2),
+            Vec3::new(max.0, max.1, max.2),
+        )
+    }
+
+    #[test]
+    fn a_segment_through_a_box_is_blocked_and_a_miss_is_not() {
+        let occ = box_between((0.0, 0.0, 0.0), (10.0, 10.0, 10.0));
+        assert!(segment_blocked(
+            Vec3::new(-5.0, 5.0, 5.0),
+            Vec3::new(15.0, 5.0, 5.0),
+            &occ
+        ));
+        assert!(!segment_blocked(
+            Vec3::new(-5.0, 5.0, 5.0),
+            Vec3::new(-1.0, 5.0, 5.0),
+            &occ
+        ));
+        assert!(!segment_blocked(
+            Vec3::new(-5.0, 20.0, 5.0),
+            Vec3::new(15.0, 20.0, 5.0),
+            &occ
+        ));
+    }
+
+    #[test]
+    fn a_facade_sample_on_the_face_does_not_occlude_itself() {
+        let wall = box_between((10.4, 0.0, -10.0), (16.4, 12.0, 10.0));
+        let lamp = Vec3::new(-4.4, 6.2, 0.0);
+        let facade = Vec3::new(10.4, 3.0, 0.0);
+        assert!(!segment_blocked(lamp, facade, &wall));
+        let inside = Vec3::new(13.0, 2.0, 0.0);
+        assert!(segment_blocked(lamp, inside, &wall));
+    }
+
+    #[test]
+    fn parallel_rays_respect_the_slab() {
+        let occ = box_between((0.0, 0.0, 0.0), (1.0, 1.0, 1.0));
+        assert!(!segment_blocked(
+            Vec3::new(-1.0, 5.0, 0.5),
+            Vec3::new(2.0, 5.0, 0.5),
+            &occ
+        ));
+        assert!(segment_blocked(
+            Vec3::new(-1.0, 0.5, 0.5),
+            Vec3::new(2.0, 0.5, 0.5),
+            &occ
+        ));
+    }
+
+    #[test]
+    fn a_lamp_lights_downward_inside_its_radius_only() {
+        let lamp = Lamp {
+            head: Vec3::new(0.0, 6.2, 0.0),
+        };
+        let field = LightField {
+            lamps: vec![lamp],
+            occluders: vec![],
+        };
+        let under = field.lamp_exposure(&lamp, Vec3::new(0.0, 0.0, 0.0));
+        assert!(under > 0.7 && under < 1.2, "pool centre {under}");
+        assert_eq!(field.lamp_exposure(&lamp, Vec3::new(0.0, 8.0, 0.0)), 0.0);
+        assert_eq!(field.lamp_exposure(&lamp, Vec3::new(0.0, 0.0, 20.0)), 0.0);
+        assert_eq!(field.lamp_exposure(&lamp, lamp.head), 0.0);
+        assert!(field.lit(Vec3::new(0.0, 1.15, 0.0)));
+        assert!(!field.lit(Vec3::new(0.0, 0.0, 20.0)));
+    }
+
+    #[test]
+    fn an_occluder_between_lamp_and_sample_zeros_that_lamp() {
+        let lamp = Lamp {
+            head: Vec3::new(-4.4, 6.2, 0.0),
+        };
+        let field = LightField {
+            lamps: vec![lamp],
+            occluders: vec![box_between((10.4, 0.0, -24.0), (16.4, 14.0, 24.0))],
+        };
+        assert_eq!(field.exposure(Vec3::new(13.0, 2.0, 0.0)), 0.0);
+        assert!(field.exposure(Vec3::new(0.0, 1.15, 0.0)) > LIT_THRESHOLD);
+    }
+
+    #[test]
+    fn exposure_saturates_and_nearest_lamp_is_stable() {
+        let lamps: Vec<Lamp> = (0..8)
+            .map(|i| Lamp {
+                head: Vec3::new(0.0, 6.2, i as f32 * 0.01),
+            })
+            .collect();
+        let field = LightField {
+            lamps,
+            occluders: vec![],
+        };
+        assert!(field.exposure(Vec3::new(0.0, 0.0, 0.0)) <= 1.2 + 1e-5);
+        let (idx, dist) = field.nearest_lamp(Vec3::new(1.0, 6.2, 0.0)).unwrap();
+        assert_eq!(idx, 0);
+        assert!((dist - 1.0).abs() < 1e-4);
+        assert!(LightField {
+            lamps: vec![],
+            occluders: vec![]
+        }
+        .nearest_lamp(Vec3::ZERO)
+        .is_none());
+    }
+}

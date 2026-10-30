@@ -152,7 +152,33 @@ female-figured machine, smooth dark faceless dome, the speaker
 grille in her throat, the three bars on a red field on her left
 pauldron, her white a chipped and rusted ruin that still outshines
 every street — the escalation standard; her rear and her charge are
-still owed.
+still owed. (38) THE HUD SWING FRAME — the operator mid-grapple-swing
+off a dockyard wall, firing one-handed down at Type 2, the full HUD
+live (compass strip, body pictogram, ammunition, op clock, SIG bars),
+her tagged actuator at 64% — the wall-running founding frame.
+(39) THE HUD DOCKSIDE FRAME — over the shoulder on the quay, damage
+numbers rising off the struck soldier, Type 2 looming in the fog
+with her actuator tagged at range — the RPG layer's proof of tone.
+(40) THE OPERATOR, MESH STUDY — the banner's own operator drawn as a
+colored wire-mesh model: front pose, pistol up, black-camo balaclava,
+red visor, the single-eagle NSA patch on his arm; made by Sable at
+Chase's direction through the 2026-10-29 sitting and adopted by him
+into the canon — the mesh register's founding piece, and the lab's
+profile image. (Banner-register art: the patch appears as it does on
+the banner itself; the in-game model's no-label law is unchanged.)
+RULED 2026-10-30: this piece is the operator's MAIN IDENTITY — the
+defining portrait of the man, ahead of the configuration sheets; the
+new banner Chase commissioned that night is drawn to it as the aim
+the graphics run at. Full ruling in DESIGN.md ("His main identity").
+(41) MISTER ED — the fable of the keeper: a grey, long-limbed being
+in work clothes, boots up on the desk, pipe lit, in a room on no
+district plan, tending the EliteDesk 800 G1 that keeps the world;
+inside its case an amber pod grows around something fetal,
+placarded SYSTEMZ, contents unresolved by design. His doctrine is
+maintenance, never intervention; he is never met and never fought —
+if the room is ever found, the chair is warm and he is not in it.
+Out of fiction the fable is simply true: the world runs on that
+machine. Full section in DESIGN.md ("Mister Ed").
 Fidelity work is measured against these images, not against taste. His own GLB
 model package was rejected by him as unacceptable against this standard (2026-10-29).
 

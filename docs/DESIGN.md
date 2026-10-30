@@ -472,6 +472,38 @@ later slice, noted here, not built under the operator-first directive.
 The perfection work covers both configurations: same silhouette
 discipline, same kit map, same man underneath.
 
+### His main identity (ruled 2026-10-30, Chase)
+
+Chase: the latest operator image made in-house — golden #40, the mesh
+study: the banner pose, the black-camouflage balaclava, and the
+single-eagle NSA patch on the arm that Chase had corrected to one
+eagle — "be his new identity. His main identity."
+
+So #40 is now the defining portrait of the operator: the balaclava'd
+mesh-study figure is who he IS, ahead of either configuration's
+reference sheet. This revises the standing above in two named ways:
+the street coat is a configuration he wears, no longer the identity
+default; and the single-eagle patch belongs to the identity portrait
+itself. What the ruling does not settle, and is not stretched to
+cover: whether the in-game model wears the patch and the balaclava at
+all times, or the identity governs presentation (banner, profile,
+cover) while configurations govern the field. That question rides to
+the model pass with the ruling on record. The new banner Chase
+commissioned the same night is drawn to this identity — it is the
+aim the graphics run at, on his ruling that this grade of image is
+what C35 on the EliteDesk runs.
+
+FINISH (2026-10-30, later the same night): Chase sent the
+finished-detail portrait of the same pose and kit — filed
+`debrief-operator-identity-reference.webp` — and designated it the
+reference: the identity's finish is FULL detail (fabric, leather,
+gunmetal; the translucent red visor; the gold-eagle NSA patch with
+its serif letters), with NO wire mesh anywhere on him. The mesh
+study was the pose's draft; this portrait is the finish. He
+confirmed explicitly that this detailed grade is the one C35 on the
+EliteDesk runs at full quality — the banner and the model pass aim
+at this portrait.
+
 ## The RPG layer: numbers, the HUD, and the skill tree (adopted 2026-10-29, Chase)
 
 Chase: "there should be an RPG element to the game. Shooting enemies
@@ -640,3 +672,94 @@ saint before she is the operator's ally — the offerings at her
 temple gate are theirs. The citizens arrive with the checkpoint
 slice; under the operator-first directive their build waits its
 turn like everyone else's.
+
+## Traversal: the grapple, and wall-running (wall-running adopted
+2026-10-29, Chase)
+
+The grapple law stands from the founding design: EVERYTHING
+grapples — the constraint is physical, never permission; the
+launcher is a two-handed, drum-fed tool (golden #16), so hooking
+commits both hands. WALL-RUNNING joins it as the second traversal
+verb, with its own physics and its own animation family, because
+Greyport is vertical: the rooftops are a second city and the walls
+are its streets.
+
+The physics are honest, priced like everything else. A wall-run is
+bought with approach speed and spent against gravity — the run
+decays, the arc falls, and the exit is a jump, a grapple, or the
+ground. Surfaces rule: dry brick holds; wet concrete in the rain
+shortens the run and slickens the exit — the weather engine prices
+traversal the way it prices hearing. The animations are a pose
+family of their own (the lean, the wall-side arm trailing for
+balance, the coat streaming) chained by the pose graph: sprint into
+wall-run, wall-run into grapple swing, swing into wall-run on the
+far wall — golden #38 is the founding frame of exactly that
+transition, the operator leaving a dockyard wall on the line,
+firing one-handed as he goes.
+
+And it is LOUD in every channel the game reads. Boots on a wall are
+footstep stimuli on a vertical surface; a man running along a wall
+is a silhouette against the sky and the lamplight — the
+Weathervane's dream, and the witness economy's easiest sentence:
+citizens look UP at that. Wall-running is the fastest way across a
+block and the fastest way into the other archive's description of
+you. Speed is a stealth system; altitude is its price list. It
+lands with the traversal milestone, after the operator — physics
+slice (capsule, the rope, wall adhesion) and the animator's
+wall-run family together, never one without the other.
+
+## The nightjars (adopted 2026-10-29, Chase)
+
+Nightjars are in Greyport, and nobody explains them. A wild bird in an
+occupied dockyard city should not be there; the game never says why
+they are. Laws:
+
+- **Rare.** A handful in the whole city, perched throughout it — on
+  wires, crane arms, rooftop edges. Most players will finish an op
+  having seen none.
+- **Heard before seen.** Their eerie churring call carries at night
+  between the cranes — a sound-engine event with no source marker;
+  the visor does not tag it. If you follow the sound and move
+  quietly, you may find the bird.
+- **A collectible.** Each nightjar found is a rare collectible in the
+  service record's margin — counted, never explained, never cashed
+  in for power. Finding one asks nothing of the player but
+  attention.
+- **Mystery is the mechanic.** No lore entry resolves them; the
+  handler does not remark on them; the Archive holds no page. They
+  are the one thing in Greyport that is not filed. (Out-of-world:
+  the nightjar is the lab's own mark — NIGHTWARE LABZ' bird, sitting
+  inside its game unexplained, exactly as a signature should be.)
+
+## Mister Ed — the fable of the keeper (adopted 2026-10-29, Chase)
+
+There is a fable Greyport tells about itself, and the Archive's
+page on it is the thinnest in the building. Somewhere there is a
+room that is not on any district plan: a desk, a lamp, a pipe gone
+to ember — and Mister Ed, grey and long-limbed in work clothes,
+boots up on the desk, keeping the machine that keeps the world.
+
+The machine is an EliteDesk 800 G1. In 1987 that box is wrong by
+four decades — no receipt exists, and the fable offers none; it
+simply insists. Inside its case, where the drives should be, an
+amber pod grows around something fetal and patient, and on the pod
+a placard reads SYSTEMZ: the world's heart, or its replacement
+being grown for when the first one fails. What is inside the pod is
+unresolved by design, in the standing company of Control's face and
+the white mecha's passenger.
+
+His doctrine is maintenance, never intervention. He does not save
+the operator, warn him, or grade him — he keeps the lamps lit and
+the rain falling and the districts stitched, and the proof of his
+shift is that the world is still there in the morning. His traces
+are repair-shaped: a quarter that stuttered and recovered, damage
+the city quietly healed overnight, weather that restarts like
+someone re-seated a card. He is never met and never fought. If a
+player ever finds the room, the chair is warm, the pipe is lit,
+and he is not in it.
+
+The fable is also, out of fiction, simply true: the world the
+player plays in runs on an EliteDesk 800 G1 — the same machine
+whose shift reports are the hardware ledgers (139 fps, Greyport
+holding its light read digit for digit). Mister Ed was on duty
+for every one of them.

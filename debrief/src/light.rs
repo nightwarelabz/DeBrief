@@ -137,6 +137,13 @@ impl LightField {
         self.exposure(p) >= LIT_THRESHOLD
     }
 
+    /// Line of sight through the volumes that dim the bake. The
+    /// same boxes the exposure walk uses — a sightline the field
+    /// blocks is a sightline a perceiver does not have.
+    pub fn blocks_sight(&self, a: Vec3, b: Vec3) -> bool {
+        self.occluders.iter().any(|o| segment_blocked(a, b, o))
+    }
+
     /// Nearest lamp head to a point (for the ledger's colour: which
     /// pool a reading belongs to).
     pub fn nearest_lamp(&self, p: Vec3) -> Option<(usize, f32)> {

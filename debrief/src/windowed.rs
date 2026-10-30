@@ -6,19 +6,24 @@
 //! wgpu surface. PS1.5 presentation by default. The patrol walks his
 //! loop in real time on the same fixed 60 Hz simulation step the
 //! headless drives use, his pose frame carried from the very update
-//! that stepped him; the operator stands his post. This is a camera
-//! and a living street, not the game yet: no player control of
-//! either man.
+//! that stepped him; the operator stands his post until F6.
+//! F6 is the op: traversal on the street, the conscript's brain
+//! on the same light, the file closed at the south end or on Enter.
+//! The proof sequence never presses F6, and the fly rig stays the
+//! way the block is surveyed.
 //!
 //! Controls (the comigen-windowed rig — the owner's hands know it):
 //!   click          capture the mouse      Esc   release it
 //!   WASD / QE      fly                    Shift speed
 //!   F1 / F2        the hero-street / patrol-echo camera rigs, held
 //!   F3 / F4        run the open / shadow crossing live, follow cam
+//!   F6             step onto the street (the op)
+//!   on the street  WASD, mouse, Ctrl crouch, Shift sprint, Space
+//!                  jump, E holds the hook, F fires, Enter closes
 //!   0–4 / `        governor pin / release (starts pinned at 0, the
 //!                  proof rig's law; a pin is absolute)
 //!   P              capture a still of the current frame (PNG, --out)
-//!   right mouse    aim the viewmodel (fly mode)
+//!   right mouse    aim the viewmodel
 //!   C              toggle the viewmodel kit: street / assault
 //!
 //! The ledger rides the title bar: frame ms, GPU ms, draws, backend,
@@ -45,8 +50,8 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Window, WindowId};
 
 use crate::{
-    block::Block, configure_scene, drive_route, echo_pose, flat_ground, follow_pose, hero_pose,
-    merge_meshes, op_mesh, patrol_legs, print_reality, soldier, Reality,
+    block::Block, configure_scene, crossing, drive_route, echo_pose, flat_ground, follow_pose, hero_pose,
+    merge_meshes, op_mesh, patrol_legs, print_reality, sense, soldier, Reality,
 };
 
 const STEP: f32 = 1.0 / 60.0;
@@ -85,8 +90,10 @@ enum CamMode {
     Fly,
     /// A canonical rig, held exactly until fly input arrives.
     Bookmark(CameraPose),
-    /// The follow rig, while a crossing runs.
+    /// The follow rig, while a scripted crossing runs.
     Drive,
+    /// On the street: the traversal sim, the conscript, the file.
+    OnFoot,
 }
 
 /// A crossing running live — the headless drive's state machine,
@@ -181,6 +188,12 @@ struct App {
     patrol_anim: Animator,
     patrol_frame: PoseFrame,
     drive: Option<DriveRun>,
+    /// The op, when F6 has put the player on the street.
+    /// While it is live the scripted patrol loop does not step —
+    /// the conscript in the crossing is the man on the beat.
+    crossing: Option<crossing::Crossing>,
+    hook_was_down: bool,
+    jump_was_down: bool,
     acc: f32,
     sim_time: f32,
     sim_steps: u64,
@@ -190,9 +203,8 @@ struct App {
     fly: FlyCam,
     keys: HashSet<KeyCode>,
     grabbed: bool,
-    /// Right mouse held: the viewmodel aims. The grapple has no
-    /// state in this host yet, so launcher poses are unreachable
-    /// until one exists — the pose mapping is LowReady / Aim only.
+    /// Right mouse held: the viewmodel aims. On the street the
+    /// launcher replaces it while the hook is committed.
     aiming: bool,
     /// The viewmodel's kit. Street by default; C toggles assault.
     /// Assault carries no labels, ever (the no-label law holds at
@@ -241,6 +253,9 @@ impl App {
             patrol_anim,
             patrol_frame,
             drive: None,
+            crossing: None,
+            hook_was_down: false,
+            jump_was_down: false,
             acc: 0.0,
             sim_time: 0.0,
             sim_steps: 0,
@@ -267,6 +282,7 @@ impl App {
         match &self.mode {
             CamMode::Fly => self.fly.pose(),
             CamMode::Bookmark(p) => *p,
+            CamMode::OnFoot => self.crossing.as_ref().map(|c| c.camera()).unwrap_or_else(|| self.fly.pose()),
             CamMode::Drive => match &self.drive {
                 Some(d) => follow_pose(d.anchor, d.ctrl.agent().yaw),
                 None => self.fly.pose(),
@@ -357,10 +373,89 @@ impl App {
         }
     }
 
+    /// Keys, as a wish, while the op owns the street. Called once
+    /// per 240 Hz substep; the hook and the jump are edges.
+    fn crossing_wish(&mut self) -> crossing::Wish {
+        let yaw = self.crossing.as_ref().map(|c| c.look_yaw).unwrap_or(0.0);
+        let pitch = self.crossing.as_ref().map(|c| c.look_pitch).unwrap_or(0.0);
+        let forward = self.keys.contains(&KeyCode::KeyW) as i32 - self.keys.contains(&KeyCode::KeyS) as i32;
+        let strafe = self.keys.contains(&KeyCode::KeyD) as i32 - self.keys.contains(&KeyCode::KeyA) as i32;
+        let crouch = self.keys.contains(&KeyCode::ControlLeft) || self.keys.contains(&KeyCode::ControlRight);
+        let sprint = self.keys.contains(&KeyCode::ShiftLeft) || self.keys.contains(&KeyCode::ShiftRight);
+        let (wish, speed) = crossing::wish_from_axes(yaw, forward as f32, strafe as f32, crouch, sprint);
+        let hook_down = self.keys.contains(&KeyCode::KeyE);
+        let jump_down = self.keys.contains(&KeyCode::Space);
+        let hook_press = hook_down && !self.hook_was_down;
+        let jump = jump_down && !self.jump_was_down;
+        self.hook_was_down = hook_down;
+        self.jump_was_down = jump_down;
+        crossing::Wish {
+            wish,
+            speed,
+            crouch,
+            jump,
+            hook_press,
+            hook_held: hook_down,
+            fire: self.keys.contains(&KeyCode::KeyF),
+            aim: crossing::look_forward(yaw, pitch),
+        }
+    }
+
+    fn finish_crossing(&mut self) {
+        let Some(c) = self.crossing.take() else { return };
+        let facts = c.facts();
+        let g = crossing::grade(&facts);
+        println!("\n{}", crossing::handler_speech(&facts, g));
+        println!("{}", crossing::margin_line(&facts));
+        let path = format!("{}/debrief-record.txt", self.out_dir);
+        match std::fs::write(&path, crossing::format_record(&facts, g)) {
+            Ok(()) => println!("record           : {path}"),
+            Err(e) => eprintln!("could not write {path}: {e}"),
+        }
+        let eye = c.eye();
+        self.fly.pos = eye;
+        self.fly.yaw = c.look_yaw;
+        self.fly.pitch = c.look_pitch;
+        self.mode = CamMode::Fly;
+        println!("[debrief] file closed — fly camera restored");
+    }
+
+    fn step_crossing(&mut self) {
+        // Four 240 Hz steps per 60 Hz host step. The brain and the
+        // traversal sim both tick at the engine's fixed step.
+        for _ in 0..4 {
+            if self.crossing.as_ref().map(|c| c.finished()).unwrap_or(true) {
+                break;
+            }
+            let wish = self.crossing_wish();
+            let Some(c) = &mut self.crossing else { break };
+            c.aiming = self.aiming;
+            let voice_from = c.voices.len();
+            let note_from = c.notices.len();
+            c.tick(&wish, &self.blk.field);
+            for v in &c.voices[voice_from..] {
+                println!("[patrol] {}", sense::voice_line(*v));
+            }
+            for n in &c.notices[note_from..] {
+                println!("{n}");
+            }
+        }
+        if self.crossing.as_ref().map(|c| c.finished()).unwrap_or(false) {
+            self.finish_crossing();
+        }
+    }
+
     /// One fixed simulation step: the patrol always; the crossing
     /// while one runs. The light read is logged exactly as the
     /// headless drive logs it — same field, same columns.
+    /// An op replaces the loop: one conscript, not two.
     fn step_sim(&mut self) {
+        if self.crossing.is_some() {
+            self.step_crossing();
+            self.sim_time += STEP;
+            self.sim_steps += 1;
+            return;
+        }
         self.sim_time += STEP;
         self.sim_steps += 1;
         // The patrol's step (loop restarts seamlessly, as headless).
@@ -434,15 +529,39 @@ impl App {
     /// body. The viewmodel carries no wires (coil mass on the
     /// drum, three solid prongs on the claw) and no labels.
     fn build_first_person(&self) -> Option<OperatorMesh> {
-        if !matches!(self.mode, CamMode::Fly) {
-            return None;
-        }
-        let spot = Vec3::new(self.fly.pos.x, 0.0, self.fly.pos.z);
-        let ground_y = self.fly.pos.y - VIEWMODEL_EYE_Y;
-        let yaw_deg = self.fly.yaw.to_degrees() + 180.0;
-        let pose = if self.aiming { ViewmodelPose::Aim } else { ViewmodelPose::LowReady };
+        let (spot, ground_y, yaw_deg, pitch, pose, crouching) = match self.mode {
+            CamMode::Fly => {
+                let spot = Vec3::new(self.fly.pos.x, 0.0, self.fly.pos.z);
+                let ground_y = self.fly.pos.y - VIEWMODEL_EYE_Y;
+                let yaw_deg = self.fly.yaw.to_degrees() + 180.0;
+                let pose = if self.aiming { ViewmodelPose::Aim } else { ViewmodelPose::LowReady };
+                (spot, ground_y, yaw_deg, self.fly.pitch, pose, false)
+            }
+            CamMode::OnFoot => {
+                let c = self.crossing.as_ref()?;
+                let eye = c.eye();
+                let spot = Vec3::new(eye.x, 0.0, eye.z);
+                // The placement contract: ground = eye − the standing
+                // eye plane, so the hands stay with the eye when a
+                // crouch lowers it. Body awareness is skipped in the
+                // crouch — the legs would sink through the street.
+                let ground_y = eye.y - VIEWMODEL_EYE_Y;
+                let yaw_deg = c.look_yaw.to_degrees() + 180.0;
+                let pose = if c.launcher_swinging() {
+                    ViewmodelPose::LauncherSwing
+                } else if c.launcher_up() {
+                    ViewmodelPose::LauncherRaise
+                } else if self.aiming {
+                    ViewmodelPose::Aim
+                } else {
+                    ViewmodelPose::LowReady
+                };
+                (spot, ground_y, yaw_deg, c.look_pitch, pose, c.crouching)
+            }
+            _ => return None,
+        };
         let vm = build_viewmodel(self.vm_config, pose, spot, ground_y, yaw_deg);
-        if self.fly.pitch < -0.2 {
+        if pitch < -0.2 && !crouching {
             let body = build_body_awareness(spot, ground_y, yaw_deg);
             Some(merge_meshes(&vm, &body))
         } else {
@@ -454,6 +573,13 @@ impl App {
     /// slot — the headless host's construction, unchanged — plus
     /// the first-person figure when the fly camera carries one.
     fn build_mesh(&self) -> OperatorMesh {
+        if let Some(c) = &self.crossing {
+            let mut mesh = c.soldier_mesh();
+            if let Some(fp) = self.build_first_person() {
+                mesh = merge_meshes(&mesh, &fp);
+            }
+            return mesh;
+        }
         let pa = *self.patrol_ctrl.agent();
         let so = soldier::soldier_mesh(
             &self.patrol_frame,
@@ -800,7 +926,7 @@ impl ApplicationHandler for App {
             r.internal_size().1
         );
         println!("governor         : pinned at level 0 (proof rig law; 0-4 re-pin, ` releases to live)");
-        println!("controls         : click = mouse capture · WASD/QE fly · Shift = speed · Esc = release · F1/F2 = hero/echo rigs · F3/F4 = open/shadow crossing · P = still · right mouse = aim · C = street/assault viewmodel");
+        println!("controls         : click = mouse capture · WASD/QE fly · Shift = speed · Esc = release · F1/F2 = hero/echo rigs · F3/F4 = open/shadow crossing · F6 = on the street · P = still · right mouse = aim · C = street/assault viewmodel");
         self.start = Instant::now();
         self.last_frame = Instant::now();
     }
@@ -861,26 +987,56 @@ impl ApplicationHandler for App {
                     }
                     match code {
                         KeyCode::F1 => {
-                            if !matches!(self.mode, CamMode::Drive) {
+                            if self.crossing.is_none() && !matches!(self.mode, CamMode::Drive) {
                                 self.mode = CamMode::Bookmark(hero_pose());
                                 println!("[camera] F1 — hero-street rig");
                             }
                             return;
                         }
                         KeyCode::F2 => {
-                            if !matches!(self.mode, CamMode::Drive) {
+                            if self.crossing.is_none() && !matches!(self.mode, CamMode::Drive) {
                                 self.mode = CamMode::Bookmark(echo_pose());
                                 println!("[camera] F2 — patrol-echo rig");
                             }
                             return;
                         }
                         KeyCode::F3 => {
-                            self.start_drive("open");
+                            if self.crossing.is_none() {
+                                self.start_drive("open");
+                            }
                             return;
                         }
                         KeyCode::F4 => {
-                            self.start_drive("shadow");
+                            if self.crossing.is_none() {
+                                self.start_drive("shadow");
+                            }
                             return;
+                        }
+                        KeyCode::F6 => {
+                            if self.crossing.is_none() && self.proof == ProofStage::Off && self.drive.is_none() {
+                                let (rain, cold) = crossing::sky_rain(&self.world);
+                                let night = crossing::is_night(&self.world);
+                                self.crossing = Some(crossing::Crossing::begin(
+                                    &self.blk.field.occluders,
+                                    &self.blk.field,
+                                    crossing::Start { night, rain, cold },
+                                ));
+                                self.mode = CamMode::OnFoot;
+                                self.hook_was_down = false;
+                                self.jump_was_down = false;
+                                println!("On the street. Cross to the south end — the checkpoint is that way.");
+                                println!("Ctrl crouches. Shift sprints. Space jumps. E holds the hook. F fires. Enter closes the file.");
+                                if !self.grabbed {
+                                    self.grab(true);
+                                }
+                            }
+                            return;
+                        }
+                        KeyCode::Enter | KeyCode::NumpadEnter => {
+                            if self.crossing.is_some() {
+                                self.finish_crossing();
+                                return;
+                            }
                         }
                         KeyCode::KeyP => {
                             self.capture_count += 1;
@@ -899,7 +1055,7 @@ impl ApplicationHandler for App {
                         _ => {}
                     }
                 }
-                if !matches!(self.mode, CamMode::Drive) {
+                if !matches!(self.mode, CamMode::Drive | CamMode::OnFoot) {
                     self.touch();
                 }
                 match state {
@@ -919,9 +1075,16 @@ impl ApplicationHandler for App {
     fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device_id: winit::event::DeviceId, event: DeviceEvent) {
         if let DeviceEvent::MouseMotion { delta: (dx, dy) } = event {
             if self.grabbed && !matches!(self.mode, CamMode::Drive) {
-                self.touch();
-                self.fly.yaw -= dx as f32 * 0.0021;
-                self.fly.pitch = (self.fly.pitch - dy as f32 * 0.0021).clamp(-1.45, 1.45);
+                if matches!(self.mode, CamMode::OnFoot) {
+                    if let Some(c) = &mut self.crossing {
+                        c.look_yaw -= dx as f32 * 0.0021;
+                        c.look_pitch = (c.look_pitch - dy as f32 * 0.0021).clamp(-1.2, 1.2);
+                    }
+                } else {
+                    self.touch();
+                    self.fly.yaw -= dx as f32 * 0.0021;
+                    self.fly.pitch = (self.fly.pitch - dy as f32 * 0.0021).clamp(-1.45, 1.45);
+                }
             }
         }
     }

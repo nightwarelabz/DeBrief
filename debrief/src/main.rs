@@ -16,16 +16,24 @@
 //!                  patrol's facing
 //!   --mode survey  no renderer: block census, the grapple anchor
 //!                  survey, and the light field's route profiles
+//!   --mode sense   no renderer: the conscript's mind along the
+//!                  open and shadow routes (the block's own light)
+//!   --mode play    no renderer: cross the block on a tape
+//!                  (--tape careful|lit|loud, --night, --rain)
+//!                  and print the debrief
 //!   --mode windowed  the same block LIVE in a real window
 //!                  (see windowed.rs; --proof / --smoke <secs> run
-//!                  it unattended for the proof rig)
+//!                  it unattended for the proof rig; F6 steps
+//!                  onto the street)
 //!
 //! Reality rig (same contract as the vista host — pins are read by
 //! this host only, never by the engine crate):
 //!   COMIGEN_PIN_ISO / COMIGEN_LAT / COMIGEN_LON / COMIGEN_UTC_OFFSET_MIN
 
 mod block;
+mod crossing;
 mod light;
+mod sense;
 mod soldier;
 mod windowed;
 
@@ -371,6 +379,18 @@ fn main() {
         light::LIT_THRESHOLD
     );
 
+    if mode == "sense" {
+        let rain: f32 = arg_value(&args, "--rain").and_then(|v| v.parse().ok()).unwrap_or(0.0);
+        sense::print_report(&blk.field, rain);
+        return;
+    }
+
+    if mode == "play" {
+        let reality = resolve_reality();
+        crossing::run_headless(&args, &blk.field, &blk.field.occluders, &reality.world);
+        return;
+    }
+
     if mode == "survey" {
         println!("--- anchor survey ({} candidates) ---", blk.anchors.len());
         print!("{}", block::anchors_csv(&blk.anchors));
@@ -463,7 +483,7 @@ fn main() {
             rig.ledger("drives");
         }
         other => {
-            eprintln!("unknown --mode '{other}' (still|poses|drive|survey|windowed)");
+            eprintln!("unknown --mode '{other}' (still|poses|drive|survey|sense|play|windowed)");
             std::process::exit(2);
         }
     }

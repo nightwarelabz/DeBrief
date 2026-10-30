@@ -6,7 +6,7 @@ builds when the engine is called ready.*
 
 **DeBrief — A City of Spies** (first entry)
 Repo: `nightwarelabz/DeBrief` · Engine: C35 (Comigen), PlayStation 1.5 presentation ·
-Perspective: third-person shooter · Genre: immersive simulator
+Perspective: first person native, third person fully supported (dual-mode) · Genre: immersive simulator
 
 ---
 
@@ -190,6 +190,37 @@ takes composed, deliberate angles — the MGS1 lesson that a *placed* camera is 
   fast-moving agent, and the grappling hook as the signature traversal tool (§4).
 - Sequencing: the game builds on C35 when the engine is called ready; the engine's M6
   (the PS1.5 pivot + the operator pipeline) is aimed at this document.
+
+## Standing rulings — 2026-10-30 (Chase)
+
+- **One operator.** The game has a single main character: the operator. There is no
+  playable cast and no co-op spine — "focus on one character as the main character that
+  just seems a lot simpler than getting mixed up with multiple agents and things like
+  that." Complexity is welcome: "It doesn't matter if it's advanced and complicated.
+  It just needs to be really well done." The story is lived through his eyes.
+- **A city of spies is inheritance, not co-op.** Other agents are never playable.
+  When the operator dies, a successor inherits the world he left: the traces persist
+  between careers — a window he broke stays broken, his tagged echoes and his
+  half-finished routes remain in the city for the next agent to find. The city of
+  spies is what the world remembers, not a roster.
+- **The visor plays in signals and sound.** The visor can tag a sound and leave a
+  ghost echo of it in the world; signal and sound are a first-class play layer, on
+  the same law as light. The visor's sound identity is its power-on motif (approved
+  2026-10-30), the anchor every other visor sound derives from.
+- **Camera: first person native, third person supported.** First person is the
+  graded truth — eye at 1.62 m, the lean, the aim, the visor frame — and the game
+  is tuned and balanced from it. Third person is fully supported on the same
+  movement core with its own rig; it carries no separate balance, and the stealth
+  math is identical in both modes.
+- **The hanging banner's bars are vertical.** The three bars on the in-engine
+  hanging street banners stand vertical, as ruled: "Uh no they are supposed to be
+  vertical." (The horizontal stripes belong to the enemy flag artwork — a different
+  object.)
+- **The graphics gap is on record.** The current engine graphics stand rated by
+  Chase at "about a one out of ten maybe a twelve out of one hundred" (2026-10-30),
+  with the ruling "It needs to be significant." That is the standing gap the
+  graphics work must close against the golden standards — the banner's temperature
+  above all. Performance is not the gap; the picture is.
 
 ## Mecha damage & destruction (Skelli's proposal, 2026-10-29 — pilot fork open)
 

@@ -128,10 +128,11 @@ has a governing reference:
 - **The menu screen:** the operator stands in the banner pose.
   Governing reference: the MAIN IDENTITY, golden #40 (the
   detailed portrait finish — full fabric/leather/gunmetal detail,
-  NO wire mesh) — with the standing model-law corrections
-  applied to the in-game figure: visor dark, never glowing; the
-  eagle patch deleted (no labels on him). The menu portrait is
-  the identity; the field figure is the configuration.
+  NO wire mesh), patch included — the single-eagle patch belongs
+  to the identity portrait by ruling. The standing model-law
+  corrections (visor dark, never glowing; no labels) apply to the
+  IN-GAME field figure, not to the identity portrait. The menu
+  portrait is the identity; the field figure is the configuration.
 - **The compendium portraits:** each person entry carries its
   golden reference as its portrait — the operator's entry carries
   #40, the handler's #18/#19, the Wanderer's #27/#28, and so on.

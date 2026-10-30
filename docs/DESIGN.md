@@ -251,3 +251,392 @@ doctrine — runs the machine. Consequences, worked through:
 - The horror is bureaucratic: nobody hesitates inside it, nobody surrenders
   it, nobody recalls it. The Regime built a machine because men asked
   questions. It does not.
+
+## Perception: the light read and the senses (Skelli's design, 2026-10-29)
+
+ONE FIELD LAW: a single practical-light field serves the renderer AND every
+perceiver. There are no separate "AI vision" numbers anywhere in the game.
+What the frame shows is what a guard's eyes receive; the lamp pools on the
+wet street are geography, not decoration. If a screenshot looks safe, it is
+safe — the game never lies with light.
+
+THE SOLDIER (human perception): stimuli are visual (light level x motion x
+posture — crouched and still in shadow is nearly invisible; upright and
+running in a lamp pool is seen street-length), audio (footsteps priced by
+surface and speed; thrown weight; gunfire means investigate), and memory
+(last known position, a search that decays). His states — unaware,
+suspicious, searching, alarmed — are carried in posture and sound (the
+weapon coming up, the whistle, the radio crackle), never in icons. He is a
+conscript, not a machine: he hesitates, he can be wrong, rain and cold
+degrade him, and he fears the mecha — a patrol yields out of its arcs, a
+tell the player learns to read like weather.
+
+THE MECHA (governor perception): the same fields, rigid tables (see the
+autonomy ruling). Its suspicion is threshold machinery with fixed timers;
+it does not doubt the way men doubt. Its emissions — servo whine, ranging,
+vents — are data: the sense mode reads its state from its sounds.
+
+THE SENSE VIEW (the visor): the world rendered as its signals. Emitters
+bloom — radios, idling engines, the mecha thinking aloud. Other men's
+attention is carried by tone and by sound, not HUD markers: the view stays
+sparse, analog, photographic in its own way. It is the agent's trade made
+visible, and the debrief grades its use: did you look before you moved?
+
+SLICE 1 ships only the light read itself: lit / unlit at the operator's
+position, logged against the patrol's facing on the proof drive. Everything
+above is the spec that read grows into.
+
+## Death and bodies
+
+No fades, no sinks, no despawn. What dies in Greyport stays in Greyport until
+the op closes — a body is evidence, and evidence is a system.
+
+- **Persistence.** Corpses persist for the whole op, where they fell, in the
+  state they were left. Blood pools spread on wet ground and stay; heavy
+  impacts and the mecha's violence leave giblets. Blood trails mark a wounded
+  man's path. The debrief reads all of it: an unfound body and a found one
+  are different records.
+- **Discovery.** A patrol that finds a body changes state — alarm, search,
+  a report the Archive hears. Moving and hiding bodies is therefore core
+  stealth craft, priced in time and exposure, exactly like the grapple.
+- **Wounds before death.** A shot soldier is not instantly a corpse: wound
+  states — down, crawling, bleeding out, calling out — and his sounds are
+  stimuli in the same fields as everything else. Finishing him is a choice
+  the record sees. So is aid. So is walking past.
+- **Gibbing has a threshold.** Small arms wound and kill honestly; gibs
+  belong to heavy force — the mecha, explosives, machinery, falls. Gore at
+  Resident Evil weight, rendered in the era's own language: blood as palette
+  and pooling decal, giblets as low-poly chunks with full surface craft.
+  PS1.5 gore is geometry, not a filter.
+- **The operator's death** ends the career, not the game: the file closes,
+  the city keeps the body where it fell, and the next agent — who inherits
+  the same persistent Greyport — can be sent to the same street and find
+  what the mecha left. The grab, the lift, and the death in the golden
+  canon are not cutscenes. They are a system the player survives or joins.
+
+## Checkpoints and papers
+
+The Regime does not only patrol Greyport; it processes it. The checkpoint is
+where the occupation touches ordinary life, and it is the game's social
+stealth heart — the Hitman blood in the design.
+
+- **The furniture.** Barriers, a boom gate, a kiosk, a queue of citizens.
+  Golden #9's street left it out; Slice 1 dresses a corner of it; the full
+  composition is its own concept piece, still owed.
+- **The verb is HALT.** The soldier's raised left palm (golden #15, rear
+  pose) is the checkpoint's grammar: stop, be seen, be read. Papers are
+  presented, not clicked — the inspection takes real time, in the open,
+  under the lamp, while the queue watches and the mecha's tread shakes
+  the kiosk glass two streets away.
+- **Papers are a system.** Identity is layered: face, dress, papers,
+  behaviour. A forgery is a physical object the Archive makes — it can be
+  good, stale, or for a man who died last week. The inspector is a
+  conscript with a quota and a mood; rain, cold, and fear of the mecha
+  all degrade him (the perception laws apply to him first).
+- **Failure is graduated.** A bad read is a question, then a detention,
+  then the palm turning into the other poses on the action sheet. The
+  checkpoint can be avoided (the rooftops are the upper floor), bribed
+  only with what a conscript risks his life to hold, or passed clean —
+  and a clean pass is information: you learn the rota, the inspector,
+  the hour the lamp battery dies.
+- **The record prices it.** Every crossing, clean or not, is a line in
+  the debrief. The Archive is built out of crossings.
+
+## The handler
+
+The debrief has a face (golden standards #18/#19). The handler is the man
+across the desk: gaunt, weathered, grey at the temples, deep-set eyes that
+have read too many files. Charcoal checker-wool greatcoat over a three-piece
+suit, leather gloves, and a brass-clasped briefcase in his RIGHT hand in
+both views — the Archive's paperwork made portable; the case is part of the
+silhouette, not an accessory. The player knows him from the front (across
+the desk, grading you) and from behind (walking you in, walking you out);
+the rear view — centre-vented coat, buttoned sleeve straps — is canon with
+the same weight as the front. His voice is the narrator's voice: gruff,
+harsh, slow, methodical. Whether he is Control or only Control's face is
+deliberately unstated — the voice on the record and the man in the room may
+or may not be one person, and the game does not answer it. He belongs to
+the room, the desk, and the record; he is not a field character.
+
+## Planned enemies: the Hound, the Weathervane, the Neighbour
+
+Adopted as a set (Chase, 2026-10-29). The soldier owns the street by
+sight, the mecha owns the district by presence; these three own the senses
+and layers the first two cannot.
+
+### The Hound (first — concept landed 2026-10-29, golden #20–#22)
+
+A scent-tracking dog worked by a handler (a soldier variant: same
+greatcoat family, long tracking lead, coiled second line, canvas scent bag
+at the belt). The dog: a large dark-sable shepherd, erect ears, unmuzzled
+when working, in a leather-and-webbing Regime harness with a small
+three-bars plate on the LEFT shoulder strap — heraldry discipline as with
+the soldier's armband. Regime paperwork: a scent asset with a serial
+number, Tracking Section. The Archive's name: the Hound.
+
+The system it adds is SCENT — the third perception channel, and the only
+one the operator cannot watch himself spend. His trail persists on the
+ground he crosses and decays over minutes; crossing his own trail freshens
+it (the dog works faster, not slower). Rain washes it (the weather
+engine's stealth price), wind carries it (approach from downwind or do
+not approach), water breaks it. The dog's state reads from posture alone,
+per the house law: nose down and pulling = tracking; head up, still =
+scent held; hackles, line straining = contact. The visor cannot show the
+player his own scent picture — the debrief grades it after the fact ("the
+dog had you from the corner of —"). Killing the dog is priced in the
+record like everything; the handler's grief is the most human thing the
+Regime owns, and the game lets it be witnessed.
+
+### The Weathervane (concept landed 2026-10-29, golden #23–#24)
+
+A rooftop observer: scope, field telephone, patience. He almost never
+shoots — he REPORTS, and the street below answers (a telephone call is a
+perception event the whole district hears the consequences of). He owns
+the high sightlines the grapple crosses, contesting the vertical layer;
+his hearing is poor, his rotation is scheduled, his silhouette against the
+sky is his tell. Regime: Observation Post (Elevated). The Archive: the
+Weathervane — he turns to face whatever the street is doing.
+
+### The Neighbour (concept landed 2026-10-29, golden #25–#26)
+
+A plain-clothes informer: no uniform, no weapon but a notebook and the
+telephone kiosk on the corner. Unreadable by dress — readable only by
+behaviour (he watches, he follows at a distance, he writes). His success
+state is not a gunfight: it is your description, entered into the other
+archive. The social layer's enemy, and the checkpoint system's shadow.
+Regime: Block Warden (Volunteer). The Archive: the Neighbour — anyone's.
+
+## The wanderer (adopted 2026-10-29, Chase; concept landed golden #27–#28)
+
+The operator's one ally, and the city's one unexplained person: a Japanese
+Zen monk, a wanderer, who shows herself rarely and belongs to no side's
+machinery. The NSA does not run her; nobody runs her. The Archive holds a
+folder on her with a single page — her description, marked UNRESOLVED. The
+Regime's other archive holds the same page. She is the one person in
+Greyport with no file, in a city made of files.
+
+APPEARANCE IS DOCTRINE, LEARNABLE LIKE THE MECHA'S: (1) she appears after
+mercy — an op where the operator aided the wounded or spared a man raises
+the chance she is somewhere quiet in the next; (2) she tends the badly
+wounded operator when he is alone — the game's only outside aid, priced in
+TIME against the op clock; (3) never during alarm, never twice in one op,
+never when the Neighbour's description of the operator is active — she
+knows when she is watched, or the city knows for her.
+
+GRACE IS A FIELD, like light is a field: near her, soldiers' suspicion
+rises slower (she tends their wounded too, and a conscript's hesitation
+around her is priced into the math); the Hound will not track across her
+raked gravel — the scent breaks at her ground; the Neighbour lowers his
+notebook, because to his eyes she is nothing at all. In the visor's sense
+view she barely registers: no emitter, no signal. Silence, read as data.
+
+HER GROUND: the Regime tolerates one temple as a pressure valve and a
+propaganda of tolerance; patrols do not enter. That tolerance has a
+BUDGET — world persistence prices it: use her cover too often and the
+temple gets watched, then closed. Grace can be spent by the city, not
+only by the player. She aids ANY wounded, enemy included — aiding a downed
+soldier beside her is a record-read choice, and the debrief may note it.
+Across a career she can die; the successor inherits the garden, the raked
+gravel, and the systems, as her ghost.
+
+HER PRICE AND HER MYSTERY: her aid costs time, never goods. What she
+wants is never answered — the game does not say whether she is a defector
+of the Emergency years, the Archive founder's last agent, or simply a
+monk, and the mystery is that there is none. The handler knows something:
+a debrief may contain one line — "You were seen sitting with someone at
+——. The record will omit it. This once." Whether that protects her, the
+operator, or the handler's own file is unstated, like his nature.
+
+## The operator — two configurations (adopted 2026-10-29, Chase)
+
+One man, two kit states, built on one body and one skeleton. The STREET
+configuration is the coat (golden #31 front, #32 rear — the rebooted
+founding concept): how he moves through the city, queues, and passes
+checkpoints as nobody. The ASSAULT configuration is the black set
+(golden #33 front, #34–#35 rear): plate carrier, balaclava, headset —
+what he wears when the work goes direct and being recognised stops
+mattering more than being protected.
+
+Two corrections bind the model pass, ruled with the adoption: the
+assault visor is DARK and never glows — red light is the mecha's
+language, and nothing on the man emits; and the NSA sleeve patch is
+DELETED — no labels, letters, or insignia anywhere on him in either
+configuration. An exile service does not sign its work.
+
+The configurations are priced by the systems already written. Assault
+cannot pass a checkpoint — the papers doctrine reads kit as loudly as
+faces. Being witnessed in assault is the most expensive description
+the Neighbour and the witness economy can carry. Changing
+configuration takes time and a private place; it is a verb for a
+later slice, noted here, not built under the operator-first directive.
+The perfection work covers both configurations: same silhouette
+discipline, same kit map, same man underneath.
+
+## The RPG layer: numbers, the HUD, and the skill tree (adopted 2026-10-29, Chase)
+
+Chase: "there should be an RPG element to the game. Shooting enemies
+projects damage numbers etc. the player has a hud and systems they use
+to engage the world. A full skill tree etc" — and, on the mecha
+problem: "That will solve some of the problems with how the mechas and
+etc are killed."
+
+The layer is real and it is diegetic: the numbers come through the
+VISOR. Analog SIGINT is the sense mode; the visor that reads the
+machine also grades the operator's own hits — impact, penetration,
+component struck. Damage numbers report what YOUR action did, never
+what an enemy thinks: the perception law stands untouched, and enemy
+state is still read from posture alone. The HUD is the visor and the
+analog instruments — wound state, ammunition, the op clock the
+doctrine already grades by — not a video-game overlay pasted on the
+world.
+
+The mecha keeps its law: NO health bar. What the numbers change is
+legibility and reach. A hit on the machine reports its component —
+SENSOR, LOCOMOTION, CANNON, POWER-COOLANT — and a skilled visor reads
+component integrity, so the kill ladder (avoid, blind/deafen, hobble,
+kill through the coolant line from above) becomes something a player
+can measure, plan, and execute instead of guess at. The ladder itself
+does not move: small arms still cannot simply shoot a mecha to death.
+What grows is the operator.
+
+The skill tree has two layers, because careers end. The OPERATOR
+layer is the man's own craft — marksmanship and force, grappling and
+movement, field endurance — and it dies with him. The SERVICE layer
+is the Archive's institutional memory — visor depth, forgery quality,
+district knowledge, the handlers' accumulated tradecraft — and it
+persists across agents, inherited with the city and the file, like
+the model kit on the desk. Progression is paid by the DEBRIEF:
+grades and completed objectives are the currency, spent at the desk
+between ops, never in a field pause menu. The three branches map to
+the grades the game already gives: FORCE (the Butcher's road),
+TRADECRAFT (the Ghost's — papers, configurations, checkpoint talk,
+reading the Neighbour), and FIELD SYSTEMS (the Surgeon's precision —
+visor depth, grapple mastery, scent discipline, component surgery on
+machines).
+
+Design adopted now; build order unchanged — the operator is
+perfected first, and the RPG layer takes its own milestone in turn.
+
+## Weapons and the final unlock (adopted 2026-10-29, Chase)
+
+The operator equips different weapons across the progression — the
+USP is the standard sidearm, not the whole armoury. The issued rack
+is golden #36, FIELD ARMAMENTS / 1987, eight weapons in progression
+order: 01 Service Pistol, 02 Suppressed SMG (the Ghost's gun — the
+only quiet firearm), 03 Field Carbine, 04 Battle Rifle, 05 Pump
+Shotgun, 06 Marksman Rifle, 07 Squad Automatic, 08 Single-Shot
+Launcher (concussion works on machine components — it can blind and
+hobble a mecha; the kill still belongs to the coolant line). Noise
+is each weapon's true price: the sheet reads top-to-bottom as a
+ladder of escalating stimulus as much as escalating force. Weapons are
+priced like everything else in this design: a gunshot is a stimulus
+the whole district hears, the grapple launcher commits both hands,
+and a slung weapon is a silhouette a checkpoint reads.
+
+The skill tree's FINAL unlock — the last thing the progression gives,
+earned at the tree's end and never before — is a samurai sword.
+Its place in the systems is exact: a blade makes no report. No
+gunshot stimulus, nothing for the Hound's ears or a patrol's alarm
+chain — the quietest kill in the game, priced in range: arm's length
+is the whole of its reach, and closing that distance is the risk the
+unlock asks the player to carry. And against the mecha it completes
+the doctrine the RPG layer made legible: a pistol cannot cut a
+coolant line. From above, by grapple, onto the bare machinery of the
+back — a blade can. The final unlock is the kill ladder's top rung
+given an edge.
+
+Its receipt, in a world where every anachronism carries one, points
+at the temple and stops there: the game's one ally is a Japanese Zen
+monk, and the Archive's page on the sword's provenance, like its
+page on her, is marked UNRESOLVED. The handler does not explain it.
+Neither does the game.
+
+## Mecha Type 2 — the white one (adopted 2026-10-29, Chase)
+
+Chase's concept, verbatim in substance: a white mecha Type 2 that is a
+female figure but incredibly obese, moves extremely fast, and screams
+at the player like a soul trapped inside a mecha suit while she runs
+at the player and attacks them.
+
+She is the Type 1's inversion. The walker is a doctrine without a
+soul — autonomous, signal-dead, patient. She is a machine with
+something in it, and everything about her is immediacy. Her plate is
+institutional WHITE, and under the one-field law that is a systems
+fact: white under sodium light is always lit. She cannot use shadow,
+cannot approach unseen, and does not care — the stealth economy the
+whole game runs on simply does not price her. You will see her
+coming. It will not save you by itself.
+
+DOCTRINE IS MOMENTUM. Mass at her speed cannot turn: she charges in
+lines, overshoots, and pays in street furniture and recovery seconds
+while her overstressed locomotion hauls her around. Fixed, learnable,
+fair — the sidestep is a skill and the charge line is a readable
+tell. She cannot climb and cannot follow a grapple; rooftops are
+refuge, which makes the Weathervane's ground the most contested in
+the district. Contact is not the Type 1's held, survivable grab —
+mass at speed is the heavy force the death design names as
+gib-capable. Distance is life.
+
+THE SCREAM IS A STIMULUS. It carries around corners and through
+rain; the district hears her — soldiers orient on it, citizens
+scatter, the Hound's ears go up. She is an alarm that hunts. Her
+voice apparatus is therefore a component the visor can grade: a
+marksman can silence her, and the charge keeps coming while the
+district stops hearing it — a tactical mercy with a record price,
+and the debrief will have a line about it. Between charges she is
+nearly quiet: breathing, through a speaker. Sometimes the screaming
+resolves almost into words. Almost.
+
+ESCALATION, NOT POPULATION. She is what a risen alert budget buys —
+kill a Type 1 and the Administration's answer may be her. She is
+never a standing patrol, never common, and her rarity is a tone law:
+she is an event the city commits, not a resident of it. Her full
+damage model is designed when her slice comes; fixed now are
+momentum, the scream, the escalation price, and the rarity.
+
+WHAT IS IN HER IS NOT ANSWERED. Volunteer, prisoner, punishment, or
+a recording of a woman who is no longer in there — the Archive's
+page on the Type 2 programme is thin and partly unfiled, and the
+game does not resolve it. In the Archive she is TYPE 2. The street's
+names for her are standing proposals, undecided: THE BRIDE, for the
+white; MOTHER, for the shape and the sound of her coming.
+
+Her accepted identity render (golden #37) fixes the details: the
+three bars ride a RED field on her LEFT pauldron — the Type 1's
+insignia law — the speaker grille sits in her throat, her face is a
+smooth dark dome with no eyes and no glow, and her white is not
+parade wear but a ruin of white: chipped to dark metal, rusted at
+the seams, still the brightest thing any street will ever hold.
+
+## The citizens (adopted 2026-10-29, Chase)
+
+Greyport is populated, and its population is a system, not set
+dressing. The citizens are built as a KIT: a handful of base
+silhouettes varied by coat, head, and palette regions on one
+generated atlas — a crowd of individuals, never one cloned face
+repeated. The founding pair are golden #29, NPC Male 1, the
+dockhand — broad, patched, a lunch tin in his hand, a face that at
+twenty metres in rain could be mistaken for the Neighbour's, a
+confusion the design prices in on purpose — and #30, NPC Female 1,
+the queue-keeper: belted raincoat, headscarf, string bag, purse in
+both hands, and the assessing sideways look of the best witness in
+the game.
+
+They work four jobs in the simulation. THE WITNESS ECONOMY: a
+citizen who sees a body, a drawn weapon, or a man climbing a wall
+runs for a telephone kiosk — a second stealth clock the visor never
+shows you: who saw, and how far they are from the nearest phone.
+THE CHECKPOINT QUEUE: the other half of social stealth, a crowd
+that shuffles, watches, and remembers faces. MORAL WEIGHT: bystanders
+price the Butcher's road in the grading — what a street saw cannot
+be un-seen by the record. And ordinary life on the same perception
+fields as everyone else: they shelter from rain, freeze and look
+down for the mecha, scatter at gunfire — and at a scream.
+
+Two cast members are citizens by construction. The Neighbour is
+built from this kit on purpose: the informer is terrifying because
+he is the crowd, with a notebook. And the Wanderer is the citizens'
+saint before she is the operator's ally — the offerings at her
+temple gate are theirs. The citizens arrive with the checkpoint
+slice; under the operator-first directive their build waits its
+turn like everyone else's.

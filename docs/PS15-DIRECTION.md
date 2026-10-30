@@ -81,7 +81,78 @@ will differ in dressing), plus (11) the patrol — the mecha posted under a sodi
 lamp on the Greyport street, canon-consistent (pauldron-left with the bars, cannon-
 right), scale and dread in one frame; the first piece where two standards meet and agree),
 plus (12) the grab — the mecha's claw on the downed operator in the wet street, the
-failure-state standard: scale at ground level, struggle, no gore for its own sake.
+failure-state standard: scale at ground level, struggle, no gore for its own sake),
+plus (13)+(14) the lift — a pair, in situ and studio isolation: the mecha holding
+the operator off the ground by the throat in its left claw (the grab sequence's
+second beat); the studio shot shows the cannon's blue charge glow, dark at rest
+in the street shot — charge-state telegraphing on the weapon itself), plus (15)
+the soldier action sheet — six poses (low ready, firing, kneeling aim, running,
+reloading, rear halt-signal): the patrol's animation reference, and the perception
+law made visible, a soldier's state read from his posture alone), plus (16) the
+grapple — the operator airborne firing the hook: a dedicated two-handed drum-fed
+launcher and a three-prong claw on a braided line, his long gun slung — the
+traversal milestone's founding reference), plus (17) the homage kit — the
+half-built "Deep Space Explorer" model kit on the debrief-room desk (saucer and
+one nacelle joined, the second nacelle still detached), sprue frames, paint pots
+and cutting mat laid out, the Earl Grey tin beside the mug: the Patrick Stewart
+homage prop standard, and the debrief room's dressing anchor — the kit visibly
+progresses across a career), plus (18)+(19) the handler — front and rear: the
+debrief officer's gaunt weathered face, grey at the temples; charcoal
+checker-wool greatcoat over a three-piece suit, leather gloves, a
+brass-clasped briefcase in his right hand in both views — the Archive's
+paperwork as silhouette. The front is the grading face across the desk; the
+rear (centre-vented coat, buttoned cuffs) is the walk-you-in angle. The cast
+is four deep now: operator, soldier, mecha, handler), plus (20)–(22) the Hound — a trio:
+the pure left-profile identity sheet; the alert three-quarter; and the rear
+three-quarter with his head turned, catching a scent — the scent-held state
+photographed before it was ever posed. Dark-sable shepherd, leather-and-brass
+tracking harness, the three-bars plate on his LEFT shoulder strap in all
+three. The enemy roster is three deep now: soldier, mecha, Hound — sight,
+presence, and the past), plus (23)+(24) the Weathervane — front and rear:
+the rooftop observer with his ear-flaps down, the long brass scope, the
+logbook under his arm, no rifle; from behind, the canvas telephone pack and
+the wire spool at his left side, the black wire paying out across the floor
+and out of frame — he is wired to the street he watches. The enemy roster
+is four deep: soldier, mecha, Hound, Weathervane — sight, presence, the
+past, and the high ground), plus (25)+(26) the Neighbour — front and rear: a
+nobody in a damp raincoat, notebook open, pencil mid-note, looking directly
+into the camera — the only member of the cast who looks at YOU. From behind
+he is anyone at all: shopping bag, umbrella, the spiral pad riding in his
+coat pocket as the single tell. NO insignia anywhere on him, by law. The
+enemy roster stands complete at five: soldier, mecha, Hound, Weathervane,
+Neighbour — sight, presence, the past, the high ground, and the crowd),
+plus (27)+(28) the Wanderer — front and rear: an elderly Japanese Zen nun,
+shaved head, patched dark kesa, wooden staff, prayer beads, her gaze
+passing by the camera entirely. The roster's sixth figure and its only
+ally: no insignia, no file, no side), plus (29)+(30) the first citizens —
+NPC Male 1, the dockhand (patched navy work coat, canvas bag, lunch tin,
+a face that could be mistaken for the Neighbour's at twenty metres — the
+confusion priced in on purpose), and NPC Female 1, the queue-keeper
+(belted raincoat, headscarf, string bag, purse in both hands, and the
+assessing sideways look of the city's best witness). The citizen kit's
+founding pair: Greyport's crowd begins here. (31)+(32) THE OPERATOR
+REBOOTED — the founding concept kept whole (waxed coat, radio pack
+high-left, twin whips, back panel, rear pouches) at the cast's current
+craft standard: the character standard every model is built to, the
+originals kept as the founding draft; (33)–(35) the same man in a black
+assault configuration (plate carrier, balaclava, red visor, NSA sleeve
+patch), front and two rears — ADOPTED the same evening as his second
+kit state beside the coat's street configuration, with two corrections
+binding the model pass: the visor dark and never glowing (red is the
+mecha's language), and the patch deleted outright — no labels on the
+man in either configuration. (36) THE FIELD ARMAMENTS — the armoury
+sheet, eight issued weapons in progression order (service pistol,
+suppressed SMG, field carbine, battle rifle, pump shotgun, marksman
+rifle, squad automatic, single-shot launcher), every shape true to
+1987 and worn like exile-service kit; the grapple launcher is absent
+because it is a tool with its own founding piece, and the sword is
+absent because it is not issued — it is earned, last. (37) MECHA
+TYPE 2 — the white one's accepted identity: a colossal obese
+female-figured machine, smooth dark faceless dome, the speaker
+grille in her throat, the three bars on a red field on her left
+pauldron, her white a chipped and rusted ruin that still outshines
+every street — the escalation standard; her rear and her charge are
+still owed.
 Fidelity work is measured against these images, not against taste. His own GLB
 model package was rejected by him as unacceptable against this standard (2026-10-29).
 

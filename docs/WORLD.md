@@ -93,3 +93,24 @@ The timeline splits in the late 1970s and arrives, by 1987, somewhere unrecogniz
   lets the record argue.
 - 1987 is period-true except where the divergence is documented. Every anachronism in the
   world must have a receipt in this bible — that discipline is the lore's credibility.
+
+## 7. Scale (Chase's directive, 2026-10-29)
+
+- **Greyport is BIG.** Not a block with a skyline painted behind it — a real
+  city: multiple districts (the dockyard, the old town, the Administration
+  quarter, the market streets, the temple ground), the checkpoint crossings
+  between them, and the rooftops as a second city laid over the first.
+  Slice 1's block is not a sample of the city; it is the city's TILE — the
+  generative pattern every district is a variation of.
+- **Big means dense, not sprawling.** The founding line stands: a city like
+  a dungeon. Acreage the player crosses without a decision is not size,
+  it is dilution. Every district is a dungeon floor with its own light,
+  its own patrol economy, its own way of being watched.
+- **The engine's arithmetic already allows it:** the block is procedural
+  and asset-free, the renderer tiles and culls, the governor prices
+  distance. The city exists whole as DATA — every street, lamp, and door
+  in the Archive's model — and becomes geometry only around the operator.
+  An op witnesses one district deeply; a career walks the whole map.
+- **Persistence is what makes big mean something:** the city remembers at
+  city scale — welded mecha damage, a closed temple, a checkpoint that
+  learned your face. A big city that forgot would just be a large one.

@@ -76,7 +76,7 @@ The timeline splits in the late 1970s and arrives, by 1987, somewhere unrecogniz
 - **Walkers, not tanks:** the Regime's machines are bipedal because the doctrine is
   presence, not war — a walker can climb a dockyard stair, stand in a plaza like a statue
   of the state, and look down. Patrol frames work the dockyards; siege frames hold the
-  bridges. The concept art (`enemy-mecha.jpg`, in the repo) is a patrol frame: grey plate
+  bridges. The concept art (`concept-art/enemy-mecha.jpg`) is a patrol frame: grey plate
   over black machinery, cannon arm, one red eye.
 - They are crewed machines in the early marks and increasingly automated in the later
   ones — the timeline of the marks is a story the Archive is assembling, and it does not

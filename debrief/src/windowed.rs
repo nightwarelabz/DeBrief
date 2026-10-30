@@ -33,7 +33,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 
-use c35::glam::{Vec2, Vec3};
+use c35::glam::Vec3;
 use c35::locomotion::{AnimInput, Animator, Controller};
 use c35::operator::{build_body_awareness, build_viewmodel, OperatorMesh, PoseFrame, ViewmodelConfig, ViewmodelPose, VIEWMODEL_EYE_Y};
 use c35::scene::CameraPose;
@@ -46,7 +46,7 @@ use winit::window::{CursorGrabMode, Window, WindowId};
 
 use crate::{
     block::Block, configure_scene, drive_route, echo_pose, flat_ground, follow_pose, hero_pose,
-    merge_meshes, op_mesh, patrol_legs, print_reality, soldier, Reality,
+    merge_meshes, op_mesh, print_reality, soldier, Reality,
 };
 
 const STEP: f32 = 1.0 / 60.0;
@@ -212,7 +212,7 @@ struct App {
 
 impl App {
     fn new(blk: Block, world: WorldState, params: &Params) -> App {
-        let patrol_ctrl = Controller::new(Vec2::new(-8.6, -40.0), patrol_legs());
+        let patrol_ctrl = crate::new_patrol();
         let mut patrol_anim = Animator::new();
         patrol_anim.set_ground_fn(Some(flat_ground));
         // Warm the patrol standing at his loop's start (headless rig).
@@ -364,11 +364,8 @@ impl App {
         self.sim_time += STEP;
         self.sim_steps += 1;
         // The patrol's step (loop restarts seamlessly, as headless).
-        let p_input = self.patrol_ctrl.update(STEP);
-        self.patrol_frame = self.patrol_anim.update(STEP, &p_input);
-        if self.patrol_ctrl.agent().done {
-            self.patrol_ctrl = Controller::new(Vec2::new(-8.6, -40.0), patrol_legs());
-        }
+        let (_p_input, patrol_frame) = crate::step_patrol(&mut self.patrol_ctrl, &mut self.patrol_anim, STEP);
+        self.patrol_frame = patrol_frame;
         let Some(d) = &mut self.drive else { return };
         let input = d.ctrl.update(STEP);
         d.last_frame = d.anim.update(STEP, &input);

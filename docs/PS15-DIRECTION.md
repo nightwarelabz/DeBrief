@@ -1,8 +1,8 @@
 # C35 direction — the PS1.5 target and DeBrief (Chase's directive, 2026-10-29)
 
 **Visual target (Chase's classification): "PlayStation 1.5 — better than PS1, not quite PS2."**
-Reference image: `~/workspace/c35-stage/debrief-operator-reference.jpg` (his upload) — and the
-full-body model sheet `~/workspace/c35-stage/debrief-operator-model-sheet.jpg` (his upload
+Reference image: `concept-art/operator-reference.jpg` (his upload) — and the
+full-body model sheet `concept-art/operator-model-sheet.jpg` (his upload
 2026-10-29): the operator standing complete — digital camo, red visor, NSA patch, USP at
 ready, radio pack, thigh holster, knee pads, boots. The model sheet governs proportions and
 everything below the chest; the bust governs the face and the banner pose. — a chunky
@@ -25,7 +25,7 @@ What PS1.5 means as engine doctrine (the reading the crews work to):
 **The first game: DeBrief** — repo: `nightwarelabz/DeBrief` (public, created by Chase 2026-10-29; LICENSE only at first check, AGPL-3.0 by size). A series. You play as an NSA special agent; the operator in the
 reference image is the main character. The name is also the frame: every entry opens and
 closes as a debriefing. **First entry: "DeBrief — A city of spies"** (the banner's subtitle,
-Chase 2026-10-29; banner art kept at ~/workspace/c35-stage/debrief-banner.jpg — stone DeBrief
+Chase 2026-10-29; banner art kept at `debrief-banner.jpg` — stone DeBrief
 wordmark, the operator full-length at a night dockyard of watchtowers, "made with the C35
 engine" line with the rainbow C35 mark, RATING N/A box). (Skelli's ruling when asked for better ideas: DeBrief stands — no
 alternative offered beat it.)

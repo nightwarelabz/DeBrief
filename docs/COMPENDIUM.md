@@ -5,7 +5,7 @@ directive: "there should also be a compendium that auto updates in the
 menu screen or whenever the operator is back at the debrief room."*
 
 Companion document: `STORY-BIBLE.md` (the lore this system records).
-Canon sources: `~/workspace/debrief/DESIGN.md`, `~/workspace/debrief/WORLD.md`.
+Canon sources: `docs/DESIGN.md`, `docs/WORLD.md`.
 Everything in this spec that is not canon is marked **PROPOSED**; the
 proposals list (§8) gathers them. The mystery law from the story bible
 binds this system absolutely: the compendium never resolves what canon

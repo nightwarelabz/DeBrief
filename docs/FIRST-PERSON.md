@@ -227,8 +227,8 @@ traversal build must carry. E press fires the hook, hold keeps
 the rope attached (pull/swing), E release detaches. No other key
 fires the hook, and no mode remaps E away from it in play. (The
 windowed host's free-fly debug camera currently uses E as
-"down" — that is a dev-camera binding, not the game, and it
-remaps when play mode owns the key. Play mode is the game; the
+up and Q as down — that is a dev-camera binding, not the game,
+and it remaps when play mode owns E. Play mode is the game; the
 debug camera yields.)
 
 ### 4.1 The grapple — MATCH NEXUIZ

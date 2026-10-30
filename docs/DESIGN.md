@@ -72,13 +72,13 @@ history, and the player who reads the world plays better than the player who onl
   system of sensors, arcs, and armour that a professional avoids, blinds, misleads, or, on
   the best day of his life, kills from inside its blind spot with the city's own machinery.
   Fighting one head-on is how agents get files closed.
-  **Canonical concept art (Chase, 2026-10-29 — in the DeBrief repo):** `enemy-soldier.jpg`
+  **Canonical concept art (Chase, 2026-10-29 — in the DeBrief repo):** `concept-art/enemy-soldier.jpg`
   — the Regime trooper: black greatcoat and pouches over dark armour, blank mask and
   goggles, suppressed rifle, and the faction's mark worn openly: a red shoulder and a red
-  armband bearing **three white bars**. `enemy-mecha.jpg` — the walker: weathered grey
+  armband bearing **three white bars**. `concept-art/enemy-mecha.jpg` — the walker: weathered grey
   plate over black machinery, a cannon for a right arm, one red eye-slit, and the same
   three bars on its red shoulder plate. One insignia on man and machine alike — the
-  occupation brands everything it owns. (Local copies: ~/workspace/debrief/.)
+  occupation brands everything it owns. (Both sheets are in `concept-art/`.)
 - **Period truth as texture:** 1987 is rendered honestly — film, paper, tape, and wire.
   Payphones and dead-letter boxes. Mainframes behind glass. A bug is a physical object you
   plant and a physical object you can lose. No anachronistic magic: if the tech didn't exist,
@@ -172,7 +172,7 @@ There will be blood and giblets, at Resident Evil weight — and this is not a h
 
 ## 8. Presentation — PlayStation 1.5, enforced by the engine
 
-Per the C35 direction (`~/workspace/c35-stage/PS15-DIRECTION.md`): chunky low-poly models with
+Per the C35 direction (`docs/PS15-DIRECTION.md`): chunky low-poly models with
 big readable silhouettes, flat facets, low-resolution generated surfaces, fog and night grades
 like the banner — cleaner than PS1 (no affine warp, no vertex wobble), short of PS2. 1987's
 city in that style: sodium light, wet concrete, watchtowers, neon through rain. Third-person

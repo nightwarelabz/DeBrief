@@ -4,7 +4,7 @@
 directive: "write the entire story and lore etc."*
 
 **Status rule for this whole document:** everything traces to
-`~/workspace/debrief/DESIGN.md` or `~/workspace/debrief/WORLD.md`, or it is
+`docs/DESIGN.md` or `docs/WORLD.md`, or it is
 marked **PROPOSED** — new story or lore that needs Chase's ruling before it
 is canon. Nothing in this file silently invents canon. The canon-consistency
 appendix (§12) and the proposals list (§13) are part of the document, not

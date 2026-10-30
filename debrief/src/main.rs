@@ -32,7 +32,7 @@ mod windowed;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use c35::glam::{Vec2, Vec3};
-use c35::locomotion::{Animator, Controller, Gait, ScriptLeg};
+use c35::locomotion::{AnimInput, Animator, Controller, Gait, ScriptLeg};
 use c35::operator::{build_operator_frame, OperatorMesh, PoseFrame};
 use c35::world::{iso_utc, world_state, Observer, WorldState};
 
@@ -44,21 +44,32 @@ fn env_f32(name: &str) -> Option<f32> {
     std::env::var(name).ok().and_then(|v| v.parse().ok())
 }
 
-/// Parse the rig's pin: ISO-8601 local time with an explicit offset.
-/// (Copied from the vista host — the rig contract is shared.)
+/// Parse the rig's pin: ISO-8601 local time with an explicit offset
+/// (`2026-01-15T08:00:00-06:00`, `...Z` / `...z`, seconds optional).
+/// Returns `(unix seconds, offset minutes)`. Impossible civil dates,
+/// unparseable fields, and years outside ±9999 are `None` — a bad pin
+/// falls back to the system clock instead of a wrong sun or an overflow
+/// panic in the day count.
 fn parse_pin_iso(s: &str) -> Option<(f64, f32)> {
-    let (dt, offset_min) = if let Some(idx) = s.rfind('Z') {
-        (&s[..idx], 0.0f32)
+    let s = s.trim();
+    let (dt, offset_min) = if let Some(dt) = s.strip_suffix(['Z', 'z']) {
+        (dt, 0.0f32)
     } else if let Some(idx) = s.rfind(['+', '-']) {
         if idx < 10 {
-            return None;
+            return None; // a date separator, not an offset
         }
         let tail = &s[idx..];
         let sign: f32 = if tail.starts_with('-') { -1.0 } else { 1.0 };
         let mut parts = tail[1..].split(':');
-        let h: f32 = parts.next()?.parse().ok()?;
-        let m: f32 = parts.next().and_then(|p| p.parse().ok()).unwrap_or(0.0);
-        (&s[..idx], sign * (h * 60.0 + m))
+        let oh: f32 = parts.next()?.parse().ok()?;
+        let om: f32 = match parts.next() {
+            None => 0.0,
+            Some(p) => p.parse().ok()?,
+        };
+        if !(0.0..15.0).contains(&oh) || oh.fract() != 0.0 || !(0.0..60.0).contains(&om) || om.fract() != 0.0 {
+            return None;
+        }
+        (&s[..idx], sign * (oh * 60.0 + om))
     } else {
         (s, 0.0f32)
     };
@@ -67,22 +78,49 @@ fn parse_pin_iso(s: &str) -> Option<(f64, f32)> {
     let time = it.next().unwrap_or("00:00:00");
     let mut d = date.split('-');
     let year: i64 = d.next()?.parse().ok()?;
-    let month: i64 = d.next()?.parse().ok()?;
-    let day: i64 = d.next()?.parse().ok()?;
+    let month: u32 = d.next()?.parse().ok()?;
+    let day: u32 = d.next()?.parse().ok()?;
+    if d.next().is_some() || !(-9999..=9999).contains(&year) {
+        return None;
+    }
+    let dim = days_in_month(year, month)?;
+    if day == 0 || day > dim {
+        return None;
+    }
     let mut t = time.split(':');
     let hh: f64 = t.next()?.parse().ok()?;
-    let mm: f64 = t.next().and_then(|p| p.parse().ok()).unwrap_or(0.0);
-    let ss: f64 = t.next().and_then(|p| p.parse().ok()).unwrap_or(0.0);
-    // Days since epoch (civil calendar, Howard Hinnant's algorithm).
-    let y = if month <= 2 { year - 1 } else { year };
-    let era = if y >= 0 { y } else { y - 399 } / 400;
-    let yoe = y - era * 400;
-    let mp = (month + 9) % 12;
-    let doy = (153 * mp + 2) / 5 + day - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    let days = era * 146097 + doe - 719468;
-    let local = days as f64 * 86400.0 + hh * 3600.0 + mm * 60.0 + ss;
+    let mm: f64 = match t.next() {
+        None => 0.0,
+        Some(p) => p.parse().ok()?,
+    };
+    let ss: f64 = match t.next() {
+        None => 0.0,
+        Some(p) => p.parse().ok()?,
+    };
+    // 24:00:00 is the ISO end-of-day instant (the next midnight). Any
+    // other hour outside 0..24, or a non-integral hour/minute, is noise.
+    let midnight = hh == 24.0 && mm == 0.0 && ss == 0.0;
+    if hh.fract() != 0.0
+        || mm.fract() != 0.0
+        || !(midnight || (0.0..24.0).contains(&hh))
+        || !(0.0..60.0).contains(&mm)
+        || !(0.0..61.0).contains(&ss)
+    {
+        return None;
+    }
+    let days = c35::world::days_from_civil(year, month, day) as f64;
+    let local = days * 86400.0 + hh * 3600.0 + mm * 60.0 + ss;
     Some((local - offset_min as f64 * 60.0, offset_min))
+}
+
+fn days_in_month(year: i64, month: u32) -> Option<u32> {
+    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => Some(31),
+        4 | 6 | 9 | 11 => Some(30),
+        2 => Some(if leap { 29 } else { 28 }),
+        _ => None,
+    }
 }
 
 pub(crate) struct Reality {
@@ -470,10 +508,101 @@ fn main() {
     print_reality(&reality);
 }
 
-/// The patrol's loop (UNAWARE): the west sidewalk north, across the
-/// north end, back down the street's east lane, across the south —
-/// a rectangle that closes on its own start, so the loop restarts
-/// seamlessly.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pin_iso_documented_offset_and_epoch_match_utc() {
+        let (unix, off) = parse_pin_iso("2026-01-15T08:00:00-06:00").unwrap();
+        assert_eq!(off, -360.0);
+        assert_eq!(c35::world::iso_utc(unix), "2026-01-15T14:00:00Z");
+
+        let (unix, off) = parse_pin_iso("1970-01-01T00:00:00Z").unwrap();
+        assert_eq!(off, 0.0);
+        assert_eq!(unix, 0.0);
+
+        let (unix, off) = parse_pin_iso("2026-01-15T14:00:00+05:30").unwrap();
+        assert_eq!(off, 330.0);
+        assert_eq!(c35::world::iso_utc(unix), "2026-01-15T08:30:00Z");
+
+        let (unix, _) = parse_pin_iso("1970-01-01T00:00:00z").unwrap();
+        assert_eq!(unix, 0.0);
+
+        let (unix, _) = parse_pin_iso("1970-01-01T24:00:00Z").unwrap();
+        assert_eq!(unix, 86400.0);
+        assert!(parse_pin_iso("1970-01-01T24:00:01Z").is_none());
+    }
+
+    #[test]
+    fn pin_iso_rejects_impossible_dates_and_garbage_fields() {
+        assert!(parse_pin_iso("2026-02-31T00:00:00Z").is_none());
+        assert!(parse_pin_iso("2026-02-29T00:00:00Z").is_none());
+        assert!(parse_pin_iso("2024-02-29T00:00:00Z").is_some());
+        assert!(parse_pin_iso("1900-02-29T00:00:00Z").is_none());
+        assert!(parse_pin_iso("2000-02-29T00:00:00Z").is_some());
+        assert!(parse_pin_iso("2026-13-01T00:00:00Z").is_none());
+        assert!(parse_pin_iso("2026-01-15T25:00:00Z").is_none());
+        assert!(parse_pin_iso("2026-01-15T08:xy:00Z").is_none());
+        assert!(parse_pin_iso("2026-01-15T08:00:00-06:ab").is_none());
+        assert!(parse_pin_iso("2026-01-15T08:00:00+00:00Z").is_none());
+    }
+
+    #[test]
+    fn pin_iso_huge_year_does_not_panic() {
+        let parsed = std::panic::catch_unwind(|| parse_pin_iso("30000000000000000-01-01T00:00:00Z"));
+        assert!(parsed.is_ok(), "parser panicked on a huge year");
+        assert!(parsed.unwrap().is_none());
+    }
+
+    #[test]
+    fn patrol_loop_keeps_walking_through_the_closing_corner() {
+        let mut ctrl = new_patrol();
+        let mut anim = Animator::new();
+        anim.set_ground_fn(Some(flat_ground));
+        let dt = 1.0 / 60.0;
+        let mut prev_yaw = ctrl.agent.yaw;
+        let mut min_speed = f32::MAX;
+        let mut max_dyaw = 0.0f32;
+        let mut warmed = false;
+        for _ in 0..20_000 {
+            step_patrol(&mut ctrl, &mut anim, dt);
+            let mut dy = ctrl.agent.yaw - prev_yaw;
+            while dy > std::f32::consts::PI {
+                dy -= std::f32::consts::TAU;
+            }
+            while dy < -std::f32::consts::PI {
+                dy += std::f32::consts::TAU;
+            }
+            if warmed {
+                min_speed = min_speed.min(ctrl.agent.speed);
+                max_dyaw = max_dyaw.max(dy.abs());
+            } else if ctrl.agent.distance > 5.0 {
+                warmed = true;
+            }
+            prev_yaw = ctrl.agent.yaw;
+        }
+        assert!(warmed, "patrol never left the start");
+        assert!(
+            ctrl.agent.distance > 200.0,
+            "distance reset each lap ({})",
+            ctrl.agent.distance
+        );
+        assert!(
+            min_speed > 1.0,
+            "patrol braked to a stop at the closing corner (min speed {min_speed})"
+        );
+        assert!(
+            max_dyaw < 0.05,
+            "facing snapped at the closing corner (max step {max_dyaw} rad)"
+        );
+    }
+}
+
+/// One lap of the patrol (UNAWARE). North is −Z (the dockyard). He
+/// starts at the north end of the west sidewalk, walks south, crosses
+/// the south end, walks north up the street's east lane, and crosses
+/// the north end back to the start.
 pub(crate) fn patrol_legs() -> Vec<ScriptLeg> {
     vec![
         ScriptLeg::to(-8.6, 40.0, Gait::Walk),
@@ -483,12 +612,56 @@ pub(crate) fn patrol_legs() -> Vec<ScriptLeg> {
     ]
 }
 
+/// Two laps, so the lap he is walking is never the controller's final
+/// leg. A final leg brakes to a stop; the closing corner must not.
+fn patrol_script() -> Vec<ScriptLeg> {
+    let lap = patrol_legs();
+    let mut legs = Vec::with_capacity(lap.len() * 2);
+    legs.extend(lap.iter().copied());
+    legs.extend(lap.iter().copied());
+    legs
+}
+
+/// The patrol, standing at the north end of his west-sidewalk leg.
+pub(crate) fn new_patrol() -> Controller {
+    Controller::new(Vec2::new(-8.6, -40.0), patrol_script())
+}
+
+/// If he has walked off the first copy of the lap, rebuild the script
+/// under him — same place, facing, and speed — so the corner stays a
+/// corner instead of a destination. Rebuilding from `Controller::new`
+/// alone zeroes speed and snaps yaw to the first leg.
+pub(crate) fn sustain_patrol(ctrl: &mut Controller) {
+    if ctrl.agent.leg < patrol_legs().len() && !ctrl.agent.done {
+        return;
+    }
+    let pos = ctrl.agent.pos;
+    let yaw = ctrl.agent.yaw;
+    let speed = ctrl.agent.speed;
+    let gait = ctrl.agent.gait;
+    let distance = ctrl.agent.distance;
+    *ctrl = Controller::new(pos, patrol_script());
+    ctrl.agent.yaw = yaw;
+    ctrl.agent.speed = speed;
+    ctrl.agent.gait = gait;
+    ctrl.agent.distance = distance;
+}
+
+/// One fixed step of the patrol. Shared by the headless drive and the
+/// windowed host so the two logs cannot drift.
+pub(crate) fn step_patrol(ctrl: &mut Controller, anim: &mut Animator, dt: f32) -> (AnimInput, PoseFrame) {
+    sustain_patrol(ctrl);
+    let input = ctrl.update(dt);
+    let frame = anim.update(dt, &input);
+    (input, frame)
+}
+
 fn run_drive(rig: &mut Rig, world: &WorldState, blk: &block::Block, out_dir: &str, which: &str) {
     let (start, legs) = drive_route(which);
     let mut ctrl = Controller::new(start, legs);
     let mut anim = Animator::new();
     anim.set_ground_fn(Some(flat_ground));
-    let mut p_ctrl = Controller::new(Vec2::new(-8.6, -40.0), patrol_legs());
+    let mut p_ctrl = new_patrol();
     let mut p_anim = Animator::new();
     p_anim.set_ground_fn(Some(flat_ground));
 
@@ -532,12 +705,8 @@ fn run_drive(rig: &mut Rig, world: &WorldState, blk: &block::Block, out_dir: &st
         let input = ctrl.update(dt);
         let pframe = anim.update(dt, &input);
         let a = *ctrl.agent();
-        let p_input = p_ctrl.update(dt);
-        let p_frame = p_anim.update(dt, &p_input);
+        let (_p_input, p_frame) = step_patrol(&mut p_ctrl, &mut p_anim, dt);
         let pa = *p_ctrl.agent();
-        if pa.done {
-            p_ctrl = Controller::new(Vec2::new(-8.6, -40.0), patrol_legs());
-        }
         let op_pos = Vec3::new(a.pos.x, 0.0, a.pos.y);
         let so_pos = Vec3::new(pa.pos.x, 0.0, pa.pos.y);
         let mesh = merge_meshes(

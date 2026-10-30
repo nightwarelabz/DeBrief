@@ -29,6 +29,18 @@ use c35::props::{region as city, uv_rect, PropMesh, PropVertex, MAT_EMISSIVE, MA
 pub const BLOCK_HALF_Z: f32 = 48.0;
 pub const LAMP_HEAD_Y: f32 = 6.2;
 
+/// Checkpoint kiosk. Sits west of the shadow crossing (x = 8.9) so
+/// that drive does not walk through it. min xyz, max xyz.
+const KIOSK: [f32; 6] = [5.9, 0.0, 28.9, 8.1, 2.6, 31.1];
+
+/// Crates in the street in front of the north roller door, west of
+/// the shadow crossing. Each entry is min xyz, max xyz.
+const CRATES: [[f32; 6]; 3] = [
+    [6.0, 0.12, -41.5, 7.2, 1.35, -40.0],
+    [6.1, 1.35, -41.4, 7.1, 2.4, -40.2],
+    [5.8, 0.12, -39.6, 7.2, 1.1, -38.4],
+];
+
 fn vx(p: Vec3, n: Vec3, uv: [f32; 2], mat: f32, light: f32) -> PropVertex {
     PropVertex { position: p.to_array(), normal: n.to_array(), uv, mat, light }
 }
@@ -281,7 +293,7 @@ fn occluders() -> Vec<Occluder> {
     // End caps + kiosk.
     v.push(Occluder::new(Vec3::new(-16.0, 0.0, -56.0), Vec3::new(16.0, 18.0, -48.0)));
     v.push(Occluder::new(Vec3::new(-16.0, 0.0, 48.0), Vec3::new(16.0, 9.0, 54.0)));
-    v.push(Occluder::new(Vec3::new(7.5, 0.0, 28.9), Vec3::new(9.7, 2.6, 31.1)));
+    v.push(Occluder::new(Vec3::new(KIOSK[0], KIOSK[1], KIOSK[2]), Vec3::new(KIOSK[3], KIOSK[4], KIOSK[5])));
     v
 }
 
@@ -484,22 +496,31 @@ pub fn build_block() -> Block {
     b.box3(Vec3::new(-27.0, 0.0, 14.0), Vec3::new(-19.0, 15.0, 40.0), city::METAL_DARK, MAT_STANDARD);
 
     // ---------- dockyard + street dressing ----------
-    // Crates and a container stack by the north roller door.
-    b.box3(Vec3::new(8.6, 0.12, -41.5), Vec3::new(10.1, 1.35, -40.0), city::TIMBER, MAT_STANDARD);
-    b.box3(Vec3::new(8.7, 1.35, -41.4), Vec3::new(9.9, 2.4, -40.2), city::TIMBER, MAT_STANDARD);
-    b.box3(Vec3::new(8.4, 0.12, -39.6), Vec3::new(10.2, 1.1, -38.4), city::TIMBER, MAT_STANDARD);
+    // Crates in the street in front of the north roller door — west of
+    // the shadow crossing, which owns the sidewalk at x = 8.9.
+    for c in CRATES {
+        b.box3(Vec3::new(c[0], c[1], c[2]), Vec3::new(c[3], c[4], c[5]), city::TIMBER, MAT_STANDARD);
+    }
     b.box3(Vec3::new(11.2, 0.0, -44.5), Vec3::new(13.6, 2.5, -38.5), city::METAL_DARK, MAT_STANDARD);
     // Checkpoint-lite (set dressing, south-east): kiosk, barrier,
     // drums. The HALT is staged here later; in Slice 1 it is a
     // dressed corner the drives pass.
-    b.box3(Vec3::new(7.5, 0.0, 28.9), Vec3::new(9.7, 2.6, 31.1), city::TIMBER, MAT_STANDARD);
-    b.box3(Vec3::new(7.35, 2.6, 28.75), Vec3::new(9.85, 2.85, 31.25), city::METAL_DARK, MAT_STANDARD);
+    let (kx0, kz0, kx1, ky1, kz1) = (KIOSK[0], KIOSK[2], KIOSK[3], KIOSK[4], KIOSK[5]);
+    b.box3(Vec3::new(kx0, KIOSK[1], kz0), Vec3::new(kx1, ky1, kz1), city::TIMBER, MAT_STANDARD);
+    b.box3(
+        Vec3::new(kx0 - 0.15, ky1, kz0 - 0.15),
+        Vec3::new(kx1 + 0.15, ky1 + 0.25, kz1 + 0.15),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
+    let wx = kx0 - 0.06;
+    let zc = (kz0 + kz1) * 0.5;
     b.quad(
         [
-            Vec3::new(7.44, 1.35, 29.3),
-            Vec3::new(7.44, 1.35, 30.7),
-            Vec3::new(7.44, 2.15, 30.7),
-            Vec3::new(7.44, 2.15, 29.3),
+            Vec3::new(wx, 1.35, zc - 0.7),
+            Vec3::new(wx, 1.35, zc + 0.7),
+            Vec3::new(wx, 2.15, zc + 0.7),
+            Vec3::new(wx, 2.15, zc - 0.7),
         ],
         Vec3::NEG_X,
         city::WINDOW_LIT,
@@ -692,4 +713,75 @@ pub fn anchors_csv(anchors: &[Anchor]) -> String {
         ));
     }
     s
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn aabb_clearance(p: Vec3, min: Vec3, max: Vec3) -> f32 {
+        let c = Vec3::new(
+            p.x.clamp(min.x, max.x),
+            p.y.clamp(min.y, max.y),
+            p.z.clamp(min.z, max.z),
+        );
+        (p - c).length()
+    }
+
+    #[test]
+    fn drive_routes_stay_out_of_solids() {
+        let blk = build_block();
+        let mut solids: Vec<(Vec3, Vec3)> = blk.field.occluders.iter().map(|o| (o.min, o.max)).collect();
+        for b in CRATES {
+            solids.push((Vec3::new(b[0], b[1], b[2]), Vec3::new(b[3], b[4], b[5])));
+        }
+        for which in ["open", "shadow"] {
+            let (start, legs) = crate::drive_route(which);
+            let mut prev = start;
+            let mut samples = vec![Vec3::new(start.x, 1.0, start.y)];
+            for leg in &legs {
+                let delta = leg.target - prev;
+                let len = delta.length().max(1e-4);
+                let steps = (len / 0.25).ceil() as i32;
+                for s in 1..=steps {
+                    let t = (s as f32 / steps as f32).min(1.0);
+                    let p = prev + delta * t;
+                    samples.push(Vec3::new(p.x, 1.0, p.y));
+                }
+                prev = leg.target;
+            }
+            for p in samples {
+                for (mn, mx) in &solids {
+                    let dist = aabb_clearance(p, *mn, *mx);
+                    assert!(
+                        dist > 0.25,
+                        "{which} route at ({:.2}, {:.2}) passes within {dist:.2} m of {mn:?}..{mx:?}",
+                        p.x,
+                        p.z
+                    );
+                }
+            }
+        }
+    }
+
+    /// The shadow crossing is the dark sidewalk. Moving the kiosk and
+    /// the crates off that line must not light the route up: the only
+    /// lit samples are the two east lamps it is supposed to cross.
+    #[test]
+    fn shadow_route_stays_dark_except_the_two_east_lamps() {
+        let blk = build_block();
+        let mut z = -44.0f32;
+        while z <= 44.0 {
+            let sample = Vec3::new(8.9, 0.80, z);
+            if blk.field.lit(sample) {
+                let near = (z - 20.0).abs() < 6.0 || (z + 20.0).abs() < 6.0;
+                assert!(
+                    near,
+                    "shadow route lit at z={z:.1}, exposure {:.3}",
+                    blk.field.exposure(sample)
+                );
+            }
+            z += 0.5;
+        }
+    }
 }

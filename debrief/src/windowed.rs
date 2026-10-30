@@ -18,6 +18,8 @@
 //!   0–4 / `        governor pin / release (starts pinned at 0, the
 //!                  proof rig's law; a pin is absolute)
 //!   P              capture a still of the current frame (PNG, --out)
+//!   right mouse    aim the viewmodel (fly mode)
+//!   C              toggle the viewmodel kit: street / assault
 //!
 //! The ledger rides the title bar: frame ms, GPU ms, draws, backend,
 //! presentation, governor state — footage carries its own proof.
@@ -33,11 +35,11 @@ use std::time::Instant;
 
 use c35::glam::{Vec2, Vec3};
 use c35::locomotion::{AnimInput, Animator, Controller};
-use c35::operator::{OperatorMesh, PoseFrame};
+use c35::operator::{build_body_awareness, build_viewmodel, OperatorMesh, PoseFrame, ViewmodelConfig, ViewmodelPose, VIEWMODEL_EYE_Y};
 use c35::scene::CameraPose;
 use c35::world::WorldState;
 use winit::application::ApplicationHandler;
-use winit::event::{DeviceEvent, ElementState, KeyEvent, WindowEvent};
+use winit::event::{DeviceEvent, ElementState, KeyEvent, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Window, WindowId};
@@ -188,6 +190,14 @@ struct App {
     fly: FlyCam,
     keys: HashSet<KeyCode>,
     grabbed: bool,
+    /// Right mouse held: the viewmodel aims. The grapple has no
+    /// state in this host yet, so launcher poses are unreachable
+    /// until one exists — the pose mapping is LowReady / Aim only.
+    aiming: bool,
+    /// The viewmodel's kit. Street by default; C toggles assault.
+    /// Assault carries no labels, ever (the no-label law holds at
+    /// arm's length: the engine models no patch here).
+    vm_config: ViewmodelConfig,
     start: Instant,
     last_frame: Instant,
     frame_ema_ms: f64,
@@ -239,6 +249,8 @@ impl App {
             fly: FlyCam::from_pose(&hero_pose()),
             keys: HashSet::new(),
             grabbed: false,
+            aiming: false,
+            vm_config: ViewmodelConfig::Street,
             start: Instant::now(),
             last_frame: Instant::now(),
             frame_ema_ms: 0.0,
@@ -405,8 +417,42 @@ impl App {
         }
     }
 
+    /// The first-person figure, built from the fly camera — Fly
+    /// mode only, where the camera IS the operator. Bookmark rigs
+    /// stay cinematic (their stills keep no hands in frame) and
+    /// the Drive follow cam watches the crossing operator, so
+    /// neither gets a viewmodel. Placement is the engine's
+    /// contract exactly: spot = camera XZ, ground = camera
+    /// height − VIEWMODEL_EYE_Y, so the eye plane sits at the
+    /// camera and the body stands under it. The figure faces
+    /// body +Z while the camera looks −Z at yaw 0, so the
+    /// figure's yaw is the camera's yaw + 180°.
+    ///
+    /// Body awareness rides along when the camera pitches down
+    /// past −0.2 rad: it is the figure's own pelvis/leg parts
+    /// on the shared skeleton, so it cannot detach from the
+    /// body. The viewmodel carries no wires (coil mass on the
+    /// drum, three solid prongs on the claw) and no labels.
+    fn build_first_person(&self) -> Option<OperatorMesh> {
+        if !matches!(self.mode, CamMode::Fly) {
+            return None;
+        }
+        let spot = Vec3::new(self.fly.pos.x, 0.0, self.fly.pos.z);
+        let ground_y = self.fly.pos.y - VIEWMODEL_EYE_Y;
+        let yaw_deg = self.fly.yaw.to_degrees() + 180.0;
+        let pose = if self.aiming { ViewmodelPose::Aim } else { ViewmodelPose::LowReady };
+        let vm = build_viewmodel(self.vm_config, pose, spot, ground_y, yaw_deg);
+        if self.fly.pitch < -0.2 {
+            let body = build_body_awareness(spot, ground_y, yaw_deg);
+            Some(merge_meshes(&vm, &body))
+        } else {
+            Some(vm)
+        }
+    }
+
     /// Both men, posed and merged through the engine's character
-    /// slot — the headless host's construction, unchanged.
+    /// slot — the headless host's construction, unchanged — plus
+    /// the first-person figure when the fly camera carries one.
     fn build_mesh(&self) -> OperatorMesh {
         let pa = *self.patrol_ctrl.agent();
         let so = soldier::soldier_mesh(
@@ -427,7 +473,11 @@ impl App {
             }
             None => op_mesh(&PoseFrame::from_pose(c35::OperatorPose::StandReady), POST, POST_YAW_DEG),
         };
-        merge_meshes(&op, &so)
+        let mut mesh = merge_meshes(&op, &so);
+        if let Some(fp) = self.build_first_person() {
+            mesh = merge_meshes(&mesh, &fp);
+        }
+        mesh
     }
 
     /// A still of the current live state, taken the headless way:
@@ -750,7 +800,7 @@ impl ApplicationHandler for App {
             r.internal_size().1
         );
         println!("governor         : pinned at level 0 (proof rig law; 0-4 re-pin, ` releases to live)");
-        println!("controls         : click = mouse capture · WASD/QE fly · Shift = speed · Esc = release · F1/F2 = hero/echo rigs · F3/F4 = open/shadow crossing · P = still");
+        println!("controls         : click = mouse capture · WASD/QE fly · Shift = speed · Esc = release · F1/F2 = hero/echo rigs · F3/F4 = open/shadow crossing · P = still · right mouse = aim · C = street/assault viewmodel");
         self.start = Instant::now();
         self.last_frame = Instant::now();
     }
@@ -765,16 +815,21 @@ impl ApplicationHandler for App {
                 }
                 self.configure_surface();
             }
-            WindowEvent::MouseInput { state: ElementState::Pressed, .. } => {
-                if !matches!(self.mode, CamMode::Drive) {
-                    self.touch();
+            WindowEvent::MouseInput { button, state, .. } => {
+                if button == MouseButton::Right {
+                    self.aiming = state == ElementState::Pressed;
                 }
-                if !self.grabbed {
-                    self.grab(true);
+                if state == ElementState::Pressed {
+                    if !matches!(self.mode, CamMode::Drive) {
+                        self.touch();
+                    }
+                    if !self.grabbed {
+                        self.grab(true);
+                    }
                 }
             }
             WindowEvent::KeyboardInput {
-                event: KeyEvent { physical_key: PhysicalKey::Code(code), state, .. },
+                event: KeyEvent { physical_key: PhysicalKey::Code(code), state, repeat, .. },
                 ..
             } => {
                 if code == KeyCode::Escape && state == ElementState::Pressed {
@@ -831,6 +886,14 @@ impl ApplicationHandler for App {
                             self.capture_count += 1;
                             let p = format!("{}/window-capture-{}.png", self.out_dir, self.capture_count);
                             self.capture(&p);
+                            return;
+                        }
+                        KeyCode::KeyC if !repeat => {
+                            self.vm_config = match self.vm_config {
+                                ViewmodelConfig::Street => ViewmodelConfig::Assault,
+                                ViewmodelConfig::Assault => ViewmodelConfig::Street,
+                            };
+                            println!("[viewmodel] kit {:?}", self.vm_config);
                             return;
                         }
                         _ => {}

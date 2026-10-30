@@ -30,7 +30,13 @@ pub const BLOCK_HALF_Z: f32 = 48.0;
 pub const LAMP_HEAD_Y: f32 = 6.2;
 
 fn vx(p: Vec3, n: Vec3, uv: [f32; 2], mat: f32, light: f32) -> PropVertex {
-    PropVertex { position: p.to_array(), normal: n.to_array(), uv, mat, light }
+    PropVertex {
+        position: p.to_array(),
+        normal: n.to_array(),
+        uv,
+        mat,
+        light,
+    }
 }
 
 /// A mesh under construction: vertices + indices + the field that
@@ -43,7 +49,11 @@ struct B<'a> {
 
 impl<'a> B<'a> {
     fn new(field: &'a LightField) -> B<'a> {
-        B { v: Vec::new(), i: Vec::new(), field }
+        B {
+            v: Vec::new(),
+            i: Vec::new(),
+            field,
+        }
     }
 
     fn bake(&self, p: Vec3) -> f32 {
@@ -60,19 +70,28 @@ impl<'a> B<'a> {
             let l = self.bake(c[k]);
             self.v.push(vx(c[k], n, uvs[k], mat, l));
         }
-        self.i.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+        self.i
+            .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
     }
 
     /// A quad whose light is GIVEN, not baked (emissive glass, wet
     /// streak profiles, wire silhouettes).
-    fn quad_lit(&mut self, c: [Vec3; 4], n: Vec3, r: (u32, u32, u32, u32), mat: f32, lights: [f32; 4]) {
+    fn quad_lit(
+        &mut self,
+        c: [Vec3; 4],
+        n: Vec3,
+        r: (u32, u32, u32, u32),
+        mat: f32,
+        lights: [f32; 4],
+    ) {
         let [u0, v0, u1, v1] = uv_rect(r);
         let uvs = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]];
         let base = self.v.len() as u32;
         for k in 0..4 {
             self.v.push(vx(c[k], n, uvs[k], mat, lights[k]));
         }
-        self.i.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
+        self.i
+            .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
     }
 
     /// Axis-aligned box (all six faces; the caller culls by not
@@ -83,33 +102,75 @@ impl<'a> B<'a> {
         let (x1, y1, z1) = (mx.x, mx.y, mx.z);
         // +Y top
         self.quad(
-            [Vec3::new(x0, y1, z1), Vec3::new(x1, y1, z1), Vec3::new(x1, y1, z0), Vec3::new(x0, y1, z0)],
-            Vec3::Y, r, mat,
+            [
+                Vec3::new(x0, y1, z1),
+                Vec3::new(x1, y1, z1),
+                Vec3::new(x1, y1, z0),
+                Vec3::new(x0, y1, z0),
+            ],
+            Vec3::Y,
+            r,
+            mat,
         );
         // −Y bottom
         self.quad(
-            [Vec3::new(x0, y0, z0), Vec3::new(x1, y0, z0), Vec3::new(x1, y0, z1), Vec3::new(x0, y0, z1)],
-            Vec3::NEG_Y, r, mat,
+            [
+                Vec3::new(x0, y0, z0),
+                Vec3::new(x1, y0, z0),
+                Vec3::new(x1, y0, z1),
+                Vec3::new(x0, y0, z1),
+            ],
+            Vec3::NEG_Y,
+            r,
+            mat,
         );
         // +Z front
         self.quad(
-            [Vec3::new(x0, y0, z1), Vec3::new(x1, y0, z1), Vec3::new(x1, y1, z1), Vec3::new(x0, y1, z1)],
-            Vec3::Z, r, mat,
+            [
+                Vec3::new(x0, y0, z1),
+                Vec3::new(x1, y0, z1),
+                Vec3::new(x1, y1, z1),
+                Vec3::new(x0, y1, z1),
+            ],
+            Vec3::Z,
+            r,
+            mat,
         );
         // −Z back
         self.quad(
-            [Vec3::new(x1, y0, z0), Vec3::new(x0, y0, z0), Vec3::new(x0, y1, z0), Vec3::new(x1, y1, z0)],
-            Vec3::NEG_Z, r, mat,
+            [
+                Vec3::new(x1, y0, z0),
+                Vec3::new(x0, y0, z0),
+                Vec3::new(x0, y1, z0),
+                Vec3::new(x1, y1, z0),
+            ],
+            Vec3::NEG_Z,
+            r,
+            mat,
         );
         // +X right
         self.quad(
-            [Vec3::new(x1, y0, z1), Vec3::new(x1, y0, z0), Vec3::new(x1, y1, z0), Vec3::new(x1, y1, z1)],
-            Vec3::X, r, mat,
+            [
+                Vec3::new(x1, y0, z1),
+                Vec3::new(x1, y0, z0),
+                Vec3::new(x1, y1, z0),
+                Vec3::new(x1, y1, z1),
+            ],
+            Vec3::X,
+            r,
+            mat,
         );
         // −X left
         self.quad(
-            [Vec3::new(x0, y0, z0), Vec3::new(x0, y0, z1), Vec3::new(x0, y1, z1), Vec3::new(x0, y1, z0)],
-            Vec3::NEG_X, r, mat,
+            [
+                Vec3::new(x0, y0, z0),
+                Vec3::new(x0, y0, z1),
+                Vec3::new(x0, y1, z1),
+                Vec3::new(x0, y1, z0),
+            ],
+            Vec3::NEG_X,
+            r,
+            mat,
         );
     }
 
@@ -149,6 +210,7 @@ impl<'a> B<'a> {
     }
 
     /// A window quad standing slightly proud of a facade.
+    #[allow(clippy::too_many_arguments)] // position, facing, size, lit — a struct would not clarify the call sites
     fn window(&mut self, x: f32, facing: f32, zc: f32, yc: f32, w: f32, h: f32, lit: bool) {
         let px = x + facing * 0.03; // proud toward the street
         let n = Vec3::new(facing, 0.0, 0.0);
@@ -169,7 +231,11 @@ impl<'a> B<'a> {
                 Vec3::new(px, yb, zb),
             ]
         };
-        let r = if lit { city::WINDOW_LIT } else { city::WINDOW_DARK };
+        let r = if lit {
+            city::WINDOW_LIT
+        } else {
+            city::WINDOW_DARK
+        };
         let m = if lit { MAT_EMISSIVE } else { MAT_STANDARD };
         self.quad(c, n, r, m);
     }
@@ -223,7 +289,8 @@ impl<'a> B<'a> {
 /// Deterministic lit-window pick (a hash, not an RNG — the block
 /// builds identically every run).
 fn lit_pick(a: u32, b: u32, c: u32) -> bool {
-    let mut h = a.wrapping_mul(0x9E3779B1) ^ b.wrapping_mul(0x85EBCA6B) ^ c.wrapping_mul(0xC2B2AE35);
+    let mut h =
+        a.wrapping_mul(0x9E3779B1) ^ b.wrapping_mul(0x85EBCA6B) ^ c.wrapping_mul(0xC2B2AE35);
     h ^= h >> 13;
     h = h.wrapping_mul(0x27D4EB2F);
     h ^= h >> 15;
@@ -260,8 +327,14 @@ fn lamp_plan() -> (Vec<Lamp>, Vec<(Vec3, Vec3)>) {
         plan.push((Vec3::new(-7.55, 0.0, zi), Vec3::new(-4.4, LAMP_HEAD_Y, zi)));
         zi += 9.0;
     }
-    plan.push((Vec3::new(7.55, 0.0, -20.0), Vec3::new(4.4, LAMP_HEAD_Y, -20.0)));
-    plan.push((Vec3::new(7.55, 0.0, 20.0), Vec3::new(4.4, LAMP_HEAD_Y, 20.0)));
+    plan.push((
+        Vec3::new(7.55, 0.0, -20.0),
+        Vec3::new(4.4, LAMP_HEAD_Y, -20.0),
+    ));
+    plan.push((
+        Vec3::new(7.55, 0.0, 20.0),
+        Vec3::new(4.4, LAMP_HEAD_Y, 20.0),
+    ));
     let lamps = plan.iter().map(|&(_, head)| Lamp { head }).collect();
     (lamps, plan)
 }
@@ -271,17 +344,41 @@ fn lamp_plan() -> (Vec<Lamp>, Vec<(Vec3, Vec3)>) {
 fn occluders() -> Vec<Occluder> {
     let mut v = Vec::new();
     // Warehouse segments (facade x 10.4, depth to 16.4).
-    for (z0, z1, h) in [(-48.0, -24.0, 12.0), (-24.0, 0.0, 14.0), (0.0, 24.0, 11.0), (24.0, 48.0, 13.0)] {
-        v.push(Occluder::new(Vec3::new(10.4, 0.0, z0), Vec3::new(16.4, h, z1)));
+    for (z0, z1, h) in [
+        (-48.0, -24.0, 12.0),
+        (-24.0, 0.0, 14.0),
+        (0.0, 24.0, 11.0),
+        (24.0, 48.0, 13.0),
+    ] {
+        v.push(Occluder::new(
+            Vec3::new(10.4, 0.0, z0),
+            Vec3::new(16.4, h, z1),
+        ));
     }
     // Tenement segments (facade x −10.4, depth to −16.4).
-    for (z0, z1, h) in [(-48.0, -16.0, 15.0), (-16.0, 16.0, 17.0), (16.0, 48.0, 13.5)] {
-        v.push(Occluder::new(Vec3::new(-16.4, 0.0, z0), Vec3::new(-10.4, h, z1)));
+    for (z0, z1, h) in [
+        (-48.0, -16.0, 15.0),
+        (-16.0, 16.0, 17.0),
+        (16.0, 48.0, 13.5),
+    ] {
+        v.push(Occluder::new(
+            Vec3::new(-16.4, 0.0, z0),
+            Vec3::new(-10.4, h, z1),
+        ));
     }
     // End caps + kiosk.
-    v.push(Occluder::new(Vec3::new(-16.0, 0.0, -56.0), Vec3::new(16.0, 18.0, -48.0)));
-    v.push(Occluder::new(Vec3::new(-16.0, 0.0, 48.0), Vec3::new(16.0, 9.0, 54.0)));
-    v.push(Occluder::new(Vec3::new(7.5, 0.0, 28.9), Vec3::new(9.7, 2.6, 31.1)));
+    v.push(Occluder::new(
+        Vec3::new(-16.0, 0.0, -56.0),
+        Vec3::new(16.0, 18.0, -48.0),
+    ));
+    v.push(Occluder::new(
+        Vec3::new(-16.0, 0.0, 48.0),
+        Vec3::new(16.0, 9.0, 54.0),
+    ));
+    v.push(Occluder::new(
+        Vec3::new(7.5, 0.0, 28.9),
+        Vec3::new(9.7, 2.6, 31.1),
+    ));
     v
 }
 
@@ -289,7 +386,10 @@ fn occluders() -> Vec<Occluder> {
 /// geometry second, survey last.
 pub fn build_block() -> Block {
     let (lamps, plan) = lamp_plan();
-    let field = LightField { lamps, occluders: occluders() };
+    let field = LightField {
+        lamps,
+        occluders: occluders(),
+    };
     let mut b = B::new(&field);
 
     // ---------- ground ----------
@@ -303,21 +403,49 @@ pub fn build_block() -> Block {
         z += 1.2;
     }
     street_zs.push(BLOCK_HALF_Z);
-    b.plane(&street_xs, &street_zs, 0.0, city::ASPHALT, c35::props::MAT_WET);
+    b.plane(
+        &street_xs,
+        &street_zs,
+        0.0,
+        city::ASPHALT,
+        c35::props::MAT_WET,
+    );
     // Sidewalks (raised slabs).
     let walk_xs_e = [7.2, 8.8, 10.4];
     let walk_xs_w = [-10.4, -8.8, -7.2];
-    b.plane(&walk_xs_e, &street_zs, 0.12, city::CONCRETE, c35::props::MAT_WET);
-    b.plane(&walk_xs_w, &street_zs, 0.12, city::CONCRETE, c35::props::MAT_WET);
+    b.plane(
+        &walk_xs_e,
+        &street_zs,
+        0.12,
+        city::CONCRETE,
+        c35::props::MAT_WET,
+    );
+    b.plane(
+        &walk_xs_w,
+        &street_zs,
+        0.12,
+        city::CONCRETE,
+        c35::props::MAT_WET,
+    );
     // Curb faces.
     for (x, facing) in [(7.2f32, -1.0f32), (-7.2f32, 1.0f32)] {
         let n = Vec3::new(facing, 0.0, 0.0);
         for wi in 0..street_zs.len() - 1 {
             let (za, zb) = (street_zs[wi], street_zs[wi + 1]);
             let c = if facing < 0.0 {
-                [Vec3::new(x, 0.0, za), Vec3::new(x, 0.0, zb), Vec3::new(x, 0.12, zb), Vec3::new(x, 0.12, za)]
+                [
+                    Vec3::new(x, 0.0, za),
+                    Vec3::new(x, 0.0, zb),
+                    Vec3::new(x, 0.12, zb),
+                    Vec3::new(x, 0.12, za),
+                ]
             } else {
-                [Vec3::new(x, 0.0, zb), Vec3::new(x, 0.0, za), Vec3::new(x, 0.12, za), Vec3::new(x, 0.12, zb)]
+                [
+                    Vec3::new(x, 0.0, zb),
+                    Vec3::new(x, 0.0, za),
+                    Vec3::new(x, 0.12, za),
+                    Vec3::new(x, 0.12, zb),
+                ]
             };
             b.quad(c, n, city::CONCRETE, c35::props::MAT_WET);
         }
@@ -338,7 +466,12 @@ pub fn build_block() -> Block {
         b.facade(10.4, -1.0, z0, z1, h, city::BRICK);
         // Roof + parapet (the continuous rooftop line).
         b.plane(&[10.4, 13.4, 16.4], &[z0, z1], h, city::ROOF, MAT_STANDARD);
-        b.box3(Vec3::new(10.4, h, z0), Vec3::new(10.95, h + 0.5, z1), city::BRICK, MAT_STANDARD);
+        b.box3(
+            Vec3::new(10.4, h, z0),
+            Vec3::new(10.95, h + 0.5, z1),
+            city::BRICK,
+            MAT_STANDARD,
+        );
         // Windows: two floors, sparse; a few lit.
         for (fi, &yc) in [4.1f32, 7.3, 10.2].iter().enumerate() {
             if yc > h - 1.2 {
@@ -371,7 +504,12 @@ pub fn build_block() -> Block {
             city::ROLLER,
             MAT_STANDARD,
         );
-        b.box3(Vec3::new(10.3, 4.7, zc - 2.3), Vec3::new(10.45, 5.05, zc + 2.3), city::METAL_DARK, MAT_STANDARD);
+        b.box3(
+            Vec3::new(10.3, 4.7, zc - 2.3),
+            Vec3::new(10.45, 5.05, zc + 2.3),
+            city::METAL_DARK,
+            MAT_STANDARD,
+        );
     }
     for &zc in &[-6.0f32, 30.0] {
         b.quad(
@@ -401,9 +539,24 @@ pub fn build_block() -> Block {
     );
     // Warehouse loading gantries over the roller doors: posts + beam.
     for &zc in &[-36.0f32, 8.0] {
-        b.box3(Vec3::new(9.3, 0.0, zc - 2.5), Vec3::new(9.55, 5.5, zc - 2.25), city::METAL_DARK, MAT_STANDARD);
-        b.box3(Vec3::new(9.3, 0.0, zc + 2.25), Vec3::new(9.55, 5.5, zc + 2.5), city::METAL_DARK, MAT_STANDARD);
-        b.box3(Vec3::new(9.3, 5.3, zc - 2.5), Vec3::new(9.55, 5.6, zc + 2.5), city::METAL_DARK, MAT_STANDARD);
+        b.box3(
+            Vec3::new(9.3, 0.0, zc - 2.5),
+            Vec3::new(9.55, 5.5, zc - 2.25),
+            city::METAL_DARK,
+            MAT_STANDARD,
+        );
+        b.box3(
+            Vec3::new(9.3, 0.0, zc + 2.25),
+            Vec3::new(9.55, 5.5, zc + 2.5),
+            city::METAL_DARK,
+            MAT_STANDARD,
+        );
+        b.box3(
+            Vec3::new(9.3, 5.3, zc - 2.5),
+            Vec3::new(9.55, 5.6, zc + 2.5),
+            city::METAL_DARK,
+            MAT_STANDARD,
+        );
     }
 
     // ---------- tenements (west) ----------
@@ -414,11 +567,32 @@ pub fn build_block() -> Block {
     ];
     for (si, &(z0, z1, h)) in ten.iter().enumerate() {
         b.facade(-10.4, 1.0, z0, z1, h, city::BRICK_DARK);
-        b.plane(&[-16.4, -13.4, -10.4], &[z0, z1], h, city::ROOF, MAT_STANDARD);
-        b.box3(Vec3::new(-10.95, h, z0), Vec3::new(-10.4, h + 0.5, z1), city::BRICK_DARK, MAT_STANDARD);
+        b.plane(
+            &[-16.4, -13.4, -10.4],
+            &[z0, z1],
+            h,
+            city::ROOF,
+            MAT_STANDARD,
+        );
+        b.box3(
+            Vec3::new(-10.95, h, z0),
+            Vec3::new(-10.4, h + 0.5, z1),
+            city::BRICK_DARK,
+            MAT_STANDARD,
+        );
         // Stone base + cornice: the tenement's civic dress.
-        b.box3(Vec3::new(-10.55, 0.0, z0), Vec3::new(-10.4, 1.25, z1), city::STONE, MAT_STANDARD);
-        b.box3(Vec3::new(-10.62, h - 0.55, z0), Vec3::new(-10.4, h - 0.15, z1), city::STONE, MAT_STANDARD);
+        b.box3(
+            Vec3::new(-10.55, 0.0, z0),
+            Vec3::new(-10.4, 1.25, z1),
+            city::STONE,
+            MAT_STANDARD,
+        );
+        b.box3(
+            Vec3::new(-10.62, h - 0.55, z0),
+            Vec3::new(-10.4, h - 0.15, z1),
+            city::STONE,
+            MAT_STANDARD,
+        );
         // Windows: three floors, denser, tenement rhythm.
         for (fi, &yc) in [3.4f32, 6.6, 9.8, 13.0].iter().enumerate() {
             if yc > h - 1.4 {
@@ -435,10 +609,30 @@ pub fn build_block() -> Block {
         }
     }
     // A water tower on the middle tenement's roof: skyline beat.
-    b.box3(Vec3::new(-13.6, 17.0, -2.6), Vec3::new(-13.3, 19.2, -2.3), city::METAL_DARK, MAT_STANDARD);
-    b.box3(Vec3::new(-11.4, 17.0, -2.6), Vec3::new(-11.1, 19.2, -2.3), city::METAL_DARK, MAT_STANDARD);
-    b.box3(Vec3::new(-13.9, 19.2, -3.1), Vec3::new(-10.8, 21.6, -1.8), city::TIMBER, MAT_STANDARD);
-    b.box3(Vec3::new(-13.5, 21.6, -2.85), Vec3::new(-11.2, 22.3, -2.05), city::METAL_DARK, MAT_STANDARD);
+    b.box3(
+        Vec3::new(-13.6, 17.0, -2.6),
+        Vec3::new(-13.3, 19.2, -2.3),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(-11.4, 17.0, -2.6),
+        Vec3::new(-11.1, 19.2, -2.3),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(-13.9, 19.2, -3.1),
+        Vec3::new(-10.8, 21.6, -1.8),
+        city::TIMBER,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(-13.5, 21.6, -2.85),
+        Vec3::new(-11.2, 22.3, -2.05),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
 
     // ---------- end caps + dockyard (north) ----------
     // North cross block face (z = −48, facing +Z).
@@ -447,8 +641,15 @@ pub fn build_block() -> Block {
         for (xa, xb) in [(-16.0f32, -5.4f32), (-5.4, 5.4), (5.4, 16.0)] {
             for (ya, yb) in [(0.0f32, 6.0f32), (6.0, 12.0), (12.0, 18.0)] {
                 b.quad(
-                    [Vec3::new(xa, ya, -48.0), Vec3::new(xb, ya, -48.0), Vec3::new(xb, yb, -48.0), Vec3::new(xa, yb, -48.0)],
-                    n, city::BRICK_DARK, MAT_STANDARD,
+                    [
+                        Vec3::new(xa, ya, -48.0),
+                        Vec3::new(xb, ya, -48.0),
+                        Vec3::new(xb, yb, -48.0),
+                        Vec3::new(xa, yb, -48.0),
+                    ],
+                    n,
+                    city::BRICK_DARK,
+                    MAT_STANDARD,
                 );
             }
         }
@@ -459,41 +660,138 @@ pub fn build_block() -> Block {
         for (xa, xb) in [(-16.0f32, -5.4f32), (-5.4, 5.4), (5.4, 16.0)] {
             for (ya, yb) in [(0.0f32, 4.5f32), (4.5, 9.0)] {
                 b.quad(
-                    [Vec3::new(xb, ya, 48.0), Vec3::new(xa, ya, 48.0), Vec3::new(xa, yb, 48.0), Vec3::new(xb, yb, 48.0)],
-                    n, city::BRICK_DARK, MAT_STANDARD,
+                    [
+                        Vec3::new(xb, ya, 48.0),
+                        Vec3::new(xa, ya, 48.0),
+                        Vec3::new(xa, yb, 48.0),
+                        Vec3::new(xb, yb, 48.0),
+                    ],
+                    n,
+                    city::BRICK_DARK,
+                    MAT_STANDARD,
                 );
             }
         }
     }
     // The crane (north, in fog): mast, jib, counter-jib, hook line.
-    b.box3(Vec3::new(7.6, 0.0, -54.4), Vec3::new(8.4, 21.0, -53.6), city::METAL_DARK, MAT_STANDARD);
-    b.box3(Vec3::new(-6.0, 20.3, -54.3), Vec3::new(8.4, 21.0, -53.7), city::METAL_DARK, MAT_STANDARD);
-    b.box3(Vec3::new(8.4, 19.2, -54.3), Vec3::new(10.6, 21.0, -53.7), city::METAL_DARK, MAT_STANDARD);
-    b.box3(Vec3::new(-0.35, 8.4, -54.15), Vec3::new(0.35, 9.1, -53.85), city::METAL_DARK, MAT_STANDARD);
+    b.box3(
+        Vec3::new(7.6, 0.0, -54.4),
+        Vec3::new(8.4, 21.0, -53.6),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(-6.0, 20.3, -54.3),
+        Vec3::new(8.4, 21.0, -53.7),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(8.4, 19.2, -54.3),
+        Vec3::new(10.6, 21.0, -53.7),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(-0.35, 8.4, -54.15),
+        Vec3::new(0.35, 9.1, -53.85),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
     b.wire(Vec3::new(0.0, 20.3, -54.0), Vec3::new(0.0, 9.1, -54.0), 0.0);
     // A hull in the dock beyond.
-    b.box3(Vec3::new(-3.0, 0.0, -63.0), Vec3::new(15.0, 6.5, -56.0), city::METAL_DARK, MAT_STANDARD);
+    b.box3(
+        Vec3::new(-3.0, 0.0, -63.0),
+        Vec3::new(15.0, 6.5, -56.0),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
     // The gantry at the street's north mouth.
-    b.box3(Vec3::new(-9.3, 0.0, -50.3), Vec3::new(-8.8, 9.0, -49.8), city::METAL_DARK, MAT_STANDARD);
-    b.box3(Vec3::new(8.8, 0.0, -50.3), Vec3::new(9.3, 9.0, -49.8), city::METAL_DARK, MAT_STANDARD);
-    b.box3(Vec3::new(-9.3, 8.7, -50.3), Vec3::new(9.3, 9.35, -49.8), city::METAL_DARK, MAT_STANDARD);
+    b.box3(
+        Vec3::new(-9.3, 0.0, -50.3),
+        Vec3::new(-8.8, 9.0, -49.8),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(8.8, 0.0, -50.3),
+        Vec3::new(9.3, 9.0, -49.8),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(-9.3, 8.7, -50.3),
+        Vec3::new(9.3, 9.35, -49.8),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
     // Second-rank silhouettes behind both rows.
-    b.box3(Vec3::new(19.0, 0.0, -30.0), Vec3::new(27.0, 19.0, -6.0), city::BRICK_DARK, MAT_STANDARD);
-    b.box3(Vec3::new(19.0, 0.0, 6.0), Vec3::new(27.0, 16.0, 34.0), city::METAL_DARK, MAT_STANDARD);
-    b.box3(Vec3::new(-27.0, 0.0, -20.0), Vec3::new(-19.0, 21.0, 4.0), city::BRICK_DARK, MAT_STANDARD);
-    b.box3(Vec3::new(-27.0, 0.0, 14.0), Vec3::new(-19.0, 15.0, 40.0), city::METAL_DARK, MAT_STANDARD);
+    b.box3(
+        Vec3::new(19.0, 0.0, -30.0),
+        Vec3::new(27.0, 19.0, -6.0),
+        city::BRICK_DARK,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(19.0, 0.0, 6.0),
+        Vec3::new(27.0, 16.0, 34.0),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(-27.0, 0.0, -20.0),
+        Vec3::new(-19.0, 21.0, 4.0),
+        city::BRICK_DARK,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(-27.0, 0.0, 14.0),
+        Vec3::new(-19.0, 15.0, 40.0),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
 
     // ---------- dockyard + street dressing ----------
     // Crates and a container stack by the north roller door.
-    b.box3(Vec3::new(8.6, 0.12, -41.5), Vec3::new(10.1, 1.35, -40.0), city::TIMBER, MAT_STANDARD);
-    b.box3(Vec3::new(8.7, 1.35, -41.4), Vec3::new(9.9, 2.4, -40.2), city::TIMBER, MAT_STANDARD);
-    b.box3(Vec3::new(8.4, 0.12, -39.6), Vec3::new(10.2, 1.1, -38.4), city::TIMBER, MAT_STANDARD);
-    b.box3(Vec3::new(11.2, 0.0, -44.5), Vec3::new(13.6, 2.5, -38.5), city::METAL_DARK, MAT_STANDARD);
+    b.box3(
+        Vec3::new(8.6, 0.12, -41.5),
+        Vec3::new(10.1, 1.35, -40.0),
+        city::TIMBER,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(8.7, 1.35, -41.4),
+        Vec3::new(9.9, 2.4, -40.2),
+        city::TIMBER,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(8.4, 0.12, -39.6),
+        Vec3::new(10.2, 1.1, -38.4),
+        city::TIMBER,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(11.2, 0.0, -44.5),
+        Vec3::new(13.6, 2.5, -38.5),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
     // Checkpoint-lite (set dressing, south-east): kiosk, barrier,
     // drums. The HALT is staged here later; in Slice 1 it is a
     // dressed corner the drives pass.
-    b.box3(Vec3::new(7.5, 0.0, 28.9), Vec3::new(9.7, 2.6, 31.1), city::TIMBER, MAT_STANDARD);
-    b.box3(Vec3::new(7.35, 2.6, 28.75), Vec3::new(9.85, 2.85, 31.25), city::METAL_DARK, MAT_STANDARD);
+    b.box3(
+        Vec3::new(7.5, 0.0, 28.9),
+        Vec3::new(9.7, 2.6, 31.1),
+        city::TIMBER,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(7.35, 2.6, 28.75),
+        Vec3::new(9.85, 2.85, 31.25),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
     b.quad(
         [
             Vec3::new(7.44, 1.35, 29.3),
@@ -506,12 +804,32 @@ pub fn build_block() -> Block {
         MAT_EMISSIVE,
     );
     // Barrier: pivot post + the arm across the street's east lane.
-    b.box3(Vec3::new(7.3, 0.0, 28.35), Vec3::new(7.75, 1.1, 28.8), city::METAL_DARK, MAT_STANDARD);
-    b.box3(Vec3::new(2.1, 0.98, 28.5), Vec3::new(7.5, 1.14, 28.66), city::TIMBER, MAT_STANDARD);
-    b.box3(Vec3::new(1.95, 0.0, 28.42), Vec3::new(2.25, 1.0, 28.74), city::METAL_DARK, MAT_STANDARD);
+    b.box3(
+        Vec3::new(7.3, 0.0, 28.35),
+        Vec3::new(7.75, 1.1, 28.8),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(2.1, 0.98, 28.5),
+        Vec3::new(7.5, 1.14, 28.66),
+        city::TIMBER,
+        MAT_STANDARD,
+    );
+    b.box3(
+        Vec3::new(1.95, 0.0, 28.42),
+        Vec3::new(2.25, 1.0, 28.74),
+        city::METAL_DARK,
+        MAT_STANDARD,
+    );
     // Drums by the kiosk.
     for &(dx, dz) in &[(6.6f32, 31.6f32), (7.15, 32.15), (6.7, 32.3)] {
-        b.box3(Vec3::new(dx, 0.0, dz), Vec3::new(dx + 0.58, 0.92, dz + 0.58), city::METAL_DARK, MAT_STANDARD);
+        b.box3(
+            Vec3::new(dx, 0.0, dz),
+            Vec3::new(dx + 0.58, 0.92, dz + 0.58),
+            city::METAL_DARK,
+            MAT_STANDARD,
+        );
     }
 
     // ---------- lamps (geometry) ----------
@@ -521,11 +839,35 @@ pub fn build_block() -> Block {
         let px = pole.x;
         let pz = pole.z;
         // Base, pole, arm, head housing, glass.
-        b.box3(Vec3::new(px - 0.16, 0.12, pz - 0.16), Vec3::new(px + 0.16, 0.5, pz + 0.16), city::METAL_DARK, MAT_STANDARD);
-        b.box3(Vec3::new(px - 0.055, 0.12, pz - 0.055), Vec3::new(px + 0.055, 6.05, pz + 0.055), city::METAL_DARK, MAT_STANDARD);
-        let (ax0, ax1) = if head.x < px { (head.x - 0.3, px) } else { (px, head.x + 0.3) };
-        b.box3(Vec3::new(ax0, 5.98, pz - 0.05), Vec3::new(ax1, 6.08, pz + 0.05), city::METAL_DARK, MAT_STANDARD);
-        b.box3(Vec3::new(head.x - 0.34, 6.14, pz - 0.15), Vec3::new(head.x + 0.34, 6.3, pz + 0.15), city::METAL_DARK, MAT_STANDARD);
+        b.box3(
+            Vec3::new(px - 0.16, 0.12, pz - 0.16),
+            Vec3::new(px + 0.16, 0.5, pz + 0.16),
+            city::METAL_DARK,
+            MAT_STANDARD,
+        );
+        b.box3(
+            Vec3::new(px - 0.055, 0.12, pz - 0.055),
+            Vec3::new(px + 0.055, 6.05, pz + 0.055),
+            city::METAL_DARK,
+            MAT_STANDARD,
+        );
+        let (ax0, ax1) = if head.x < px {
+            (head.x - 0.3, px)
+        } else {
+            (px, head.x + 0.3)
+        };
+        b.box3(
+            Vec3::new(ax0, 5.98, pz - 0.05),
+            Vec3::new(ax1, 6.08, pz + 0.05),
+            city::METAL_DARK,
+            MAT_STANDARD,
+        );
+        b.box3(
+            Vec3::new(head.x - 0.34, 6.14, pz - 0.15),
+            Vec3::new(head.x + 0.34, 6.3, pz + 0.15),
+            city::METAL_DARK,
+            MAT_STANDARD,
+        );
         // A glowing core band around the housing, so the fixture
         // reads as a LIT lamp from street level (the down-glass
         // alone is invisible at grazing angles).
@@ -552,9 +894,17 @@ pub fn build_block() -> Block {
     // ---------- wires ----------
     // Along the west row, pole to pole (sagging), and four cross
     // spans to the warehouse face; one span carries a street banner.
-    let west_z: Vec<f32> = plan.iter().filter(|(p, _)| p.x < 0.0).map(|(p, _)| p.z).collect();
+    let west_z: Vec<f32> = plan
+        .iter()
+        .filter(|(p, _)| p.x < 0.0)
+        .map(|(p, _)| p.z)
+        .collect();
     for w in west_z.windows(2) {
-        b.wire(Vec3::new(-7.55, 5.92, w[0]), Vec3::new(-7.55, 5.92, w[1]), 0.55);
+        b.wire(
+            Vec3::new(-7.55, 5.92, w[0]),
+            Vec3::new(-7.55, 5.92, w[1]),
+            0.55,
+        );
     }
     for &zc in &[-31.5f32, -4.5, 13.5, 31.5] {
         b.wire(Vec3::new(-7.55, 5.95, zc), Vec3::new(10.4, 7.6, zc), 0.85);
@@ -586,9 +936,17 @@ pub fn build_block() -> Block {
         lamp_heads.len(),
         field.occluders.len()
     );
-    let mesh = PropMesh { vertices: b.v, indices: b.i };
+    let mesh = PropMesh {
+        vertices: b.v,
+        indices: b.i,
+    };
     let anchors = anchor_survey(&field, &lamp_heads);
-    Block { mesh, field, anchors, census }
+    Block {
+        mesh,
+        field,
+        anchors,
+        census,
+    }
 }
 
 /// The grapple anchor survey (PREP §3): candidates recorded as
@@ -613,10 +971,18 @@ fn anchor_survey(field: &LightField, lamp_heads: &[Vec3]) -> Vec<Anchor> {
         while z < z1 {
             v.push(Anchor {
                 pos: Vec3::new(x, y, z),
-                kind: if x > 0.0 { "parapet edge (warehouse)" } else { "parapet edge (tenement)" },
+                kind: if x > 0.0 {
+                    "parapet edge (warehouse)"
+                } else {
+                    "parapet edge (tenement)"
+                },
                 height: y,
                 clearance: x.abs() + 10.4, // to the opposite facade
-                opens: if x > 0.0 { "the east rooftop line; descent to the warehouse wall shadow" } else { "the west rooftop line; the lit spine from above" },
+                opens: if x > 0.0 {
+                    "the east rooftop line; descent to the warehouse wall shadow"
+                } else {
+                    "the west rooftop line; the lit spine from above"
+                },
             });
             z += 8.0;
         }

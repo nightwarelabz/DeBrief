@@ -1,0 +1,6 @@
+# Pinned compiler for local builds and CI. Not a declared MSRV:
+# wgpu 27.0.1 (via c35) requires Rust 1.88, and the package sets no rust-version.
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

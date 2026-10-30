@@ -17,7 +17,7 @@
 //!   --mode survey  no renderer: block census, the grapple anchor
 //!                  survey, and the light field's route profiles
 //!   --mode windowed  the same block LIVE in a real window
-//!                  (see windowed.rs; --proof / --smoke <secs> run
+//!                  (see windowed.rs; --proof / `--smoke <secs>` run
 //!                  it unattended for the proof rig)
 //!
 //! Reality rig (same contract as the vista host — pins are read by
@@ -111,7 +111,11 @@ pub(crate) fn resolve_reality() -> Reality {
     };
     let lat = env_f32("COMIGEN_LAT");
     let lon = env_f32("COMIGEN_LON");
-    let observer = Observer { latitude_deg: lat, longitude_deg: lon, utc_offset_minutes: offset_env };
+    let observer = Observer {
+        latitude_deg: lat,
+        longitude_deg: lon,
+        utc_offset_minutes: offset_env,
+    };
     let world = world_state(unix, &observer);
     let observer_line = match (lat, lon) {
         (Some(la), Some(lo)) => format!("lat {la:.2} (COMIGEN_LAT), lon {lo:.2} (COMIGEN_LON)"),
@@ -125,11 +129,19 @@ pub(crate) fn resolve_reality() -> Reality {
     } else {
         "UTC (no longitude or offset given)".to_string()
     };
-    Reality { world, clock_line, observer_line, solar_line }
+    Reality {
+        world,
+        clock_line,
+        observer_line,
+        solar_line,
+    }
 }
 
 fn system_now() -> f64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs_f64())
+        .unwrap_or(0.0)
 }
 
 pub(crate) fn print_reality(r: &Reality) {
@@ -200,7 +212,10 @@ pub(crate) fn drive_route(which: &str) -> (Vec2, Vec<ScriptLeg>) {
             ],
         )
     } else {
-        (Vec2::new(8.9, -44.0), vec![ScriptLeg::to(8.9, 44.0, Gait::CrouchWalk)])
+        (
+            Vec2::new(8.9, -44.0),
+            vec![ScriptLeg::to(8.9, 44.0, Gait::CrouchWalk)],
+        )
     }
 }
 
@@ -216,12 +231,26 @@ pub(crate) fn merge_meshes(a: &OperatorMesh, b: &OperatorMesh) -> OperatorMesh {
     indices.extend(b.indices.iter().map(|i| i + base));
     let mut parts: Vec<c35::operator::PartInfo> = Vec::with_capacity(a.parts.len() + b.parts.len());
     for p in a.parts.iter().chain(b.parts.iter()) {
-        parts.push(c35::operator::PartInfo { name: p.name, bone: p.bone, triangles: p.triangles });
+        parts.push(c35::operator::PartInfo {
+            name: p.name,
+            bone: p.bone,
+            triangles: p.triangles,
+        });
     }
-    OperatorMesh { vertices, indices, parts }
+    OperatorMesh {
+        vertices,
+        indices,
+        parts,
+    }
 }
 
-fn save_png(renderer: &c35::Renderer, tex: &c35::wgpu::Texture, width: u32, height: u32, path: &str) {
+fn save_png(
+    renderer: &c35::Renderer,
+    tex: &c35::wgpu::Texture,
+    width: u32,
+    height: u32,
+    path: &str,
+) {
     let bpr = (width * 4).div_ceil(256) * 256;
     let buf = renderer.device.create_buffer(&c35::wgpu::BufferDescriptor {
         label: Some("png readback"),
@@ -229,9 +258,12 @@ fn save_png(renderer: &c35::Renderer, tex: &c35::wgpu::Texture, width: u32, heig
         usage: c35::wgpu::BufferUsages::MAP_READ | c35::wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     });
-    let mut encoder = renderer.device.create_command_encoder(&c35::wgpu::CommandEncoderDescriptor {
-        label: Some("png copy"),
-    });
+    let mut encoder =
+        renderer
+            .device
+            .create_command_encoder(&c35::wgpu::CommandEncoderDescriptor {
+                label: Some("png copy"),
+            });
     encoder.copy_texture_to_buffer(
         c35::wgpu::TexelCopyTextureInfo {
             texture: tex,
@@ -247,11 +279,18 @@ fn save_png(renderer: &c35::Renderer, tex: &c35::wgpu::Texture, width: u32, heig
                 rows_per_image: Some(height),
             },
         },
-        c35::wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+        c35::wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
     );
     renderer.queue.submit([encoder.finish()]);
     buf.slice(..).map_async(c35::wgpu::MapMode::Read, |_| {});
-    let _ = renderer.device.poll(c35::wgpu::PollType::Wait { submission_index: None, timeout: None });
+    let _ = renderer.device.poll(c35::wgpu::PollType::Wait {
+        submission_index: None,
+        timeout: None,
+    });
     let range = buf.slice(..).get_mapped_range();
     let mut pixels = Vec::with_capacity((width * height * 4) as usize);
     for row in 0..height as usize {
@@ -307,20 +346,38 @@ impl Rig {
             1.0,
         ));
         configure_scene(&mut renderer, blk, present);
-        let out_tex = renderer.device.create_texture(&c35::wgpu::TextureDescriptor {
-            label: Some("debrief output"),
-            size: c35::wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: c35::wgpu::TextureDimension::D2,
-            format: c35::wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: c35::wgpu::TextureUsages::RENDER_ATTACHMENT | c35::wgpu::TextureUsages::COPY_SRC,
-            view_formats: &[],
-        });
-        Rig { renderer, out_tex, width, height }
+        let out_tex = renderer
+            .device
+            .create_texture(&c35::wgpu::TextureDescriptor {
+                label: Some("debrief output"),
+                size: c35::wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: c35::wgpu::TextureDimension::D2,
+                format: c35::wgpu::TextureFormat::Rgba8UnormSrgb,
+                usage: c35::wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | c35::wgpu::TextureUsages::COPY_SRC,
+                view_formats: &[],
+            });
+        Rig {
+            renderer,
+            out_tex,
+            width,
+            height,
+        }
     }
 
-    fn still(&mut self, world: &WorldState, pose: c35::scene::CameraPose, mesh: Option<&OperatorMesh>, path: &str) {
+    fn still(
+        &mut self,
+        world: &WorldState,
+        pose: c35::scene::CameraPose,
+        mesh: Option<&OperatorMesh>,
+        path: &str,
+    ) {
         match mesh {
             Some(m) => self.renderer.update_operator(m),
             None => self.renderer.clear_operator(),
@@ -328,7 +385,10 @@ impl Rig {
         let view = self.out_tex.create_view(&Default::default());
         for _ in 0..12 {
             self.renderer.render(&view, &pose, world, 0.0);
-            let _ = self.renderer.device.poll(c35::wgpu::PollType::Wait { submission_index: None, timeout: None });
+            let _ = self.renderer.device.poll(c35::wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            });
         }
         save_png(&self.renderer, &self.out_tex, self.width, self.height, path);
     }
@@ -338,7 +398,10 @@ impl Rig {
         let (iw, ih) = r.internal_size();
         println!("=== DEBRIEF COST LEDGER ({label}) ===");
         println!("backend          : {}", r.backend_name());
-        println!("output           : {}x{} (internal {}x{})", self.width, self.height, iw, ih);
+        println!(
+            "output           : {}x{} (internal {}x{})",
+            self.width, self.height, iw, ih
+        );
         println!("presentation     : {}", r.present_description());
         println!("draw calls/frame : {}", r.draw_calls_per_frame());
         println!("triangles/frame  : {}", r.triangles_per_frame());
@@ -358,8 +421,12 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let mode = arg_value(&args, "--mode").unwrap_or_else(|| "survey".to_string());
     let out_dir = arg_value(&args, "--out").unwrap_or_else(|| ".".to_string());
-    let width: u32 = arg_value(&args, "--width").and_then(|v| v.parse().ok()).unwrap_or(1280);
-    let height: u32 = arg_value(&args, "--height").and_then(|v| v.parse().ok()).unwrap_or(720);
+    let width: u32 = arg_value(&args, "--width")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1280);
+    let height: u32 = arg_value(&args, "--height")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(720);
     let present = arg_value(&args, "--present").unwrap_or_else(|| "ps15".to_string());
     std::fs::create_dir_all(&out_dir).expect("create out dir");
 
@@ -375,12 +442,18 @@ fn main() {
         println!("--- anchor survey ({} candidates) ---", blk.anchors.len());
         print!("{}", block::anchors_csv(&blk.anchors));
         println!("--- light profiles (exposure along the drive routes) ---");
-        for (name, x) in [("open route x=-2.0", -2.0f32), ("shadow route x=8.9", 8.9f32)] {
+        for (name, x) in [
+            ("open route x=-2.0", -2.0f32),
+            ("shadow route x=8.9", 8.9f32),
+        ] {
             let mut line = format!("{name}: ");
             let mut z = -44.0f32;
             while z <= 44.0 {
                 let e = blk.field.exposure(Vec3::new(x, 1.15, z));
-                line.push_str(&format!("[{z:+.0}:{e:.2}{}] ", if e >= light::LIT_THRESHOLD { "L" } else { "." }));
+                line.push_str(&format!(
+                    "[{z:+.0}:{e:.2}{}] ",
+                    if e >= light::LIT_THRESHOLD { "L" } else { "." }
+                ));
                 z += 4.0;
             }
             println!("{line}");
@@ -411,17 +484,45 @@ fn main() {
             // HERO: down the street from the south mouth — lamp
             // pools receding, the crane in fog at the far end, both
             // men in the street.
-            let op = op_mesh(&PoseFrame::from_pose(c35::OperatorPose::StandReady), Vec3::new(-2.0, 0.0, 3.0), 168.0);
-            let so = soldier::soldier_mesh(&soldier::pose_low_ready(), Vec3::new(-8.4, 0.0, -9.0), 0.0, 190.0);
+            let op = op_mesh(
+                &PoseFrame::from_pose(c35::OperatorPose::StandReady),
+                Vec3::new(-2.0, 0.0, 3.0),
+                168.0,
+            );
+            let so = soldier::soldier_mesh(
+                &soldier::pose_low_ready(),
+                Vec3::new(-8.4, 0.0, -9.0),
+                0.0,
+                190.0,
+            );
             let both = merge_meshes(&op, &so);
-            rig.still(&world, hero_pose(), Some(&both), &format!("{out_dir}/hero-street.png"));
+            rig.still(
+                &world,
+                hero_pose(),
+                Some(&both),
+                &format!("{out_dir}/hero-street.png"),
+            );
             // ECHO of golden #11: low camera, the patrol posted under
             // the east lamp with the banner on the wall behind him,
             // the operator crouched in the dark corner, foreground.
-            let op = op_mesh(&PoseFrame::from_pose(c35::OperatorPose::Crouch), Vec3::new(-7.4, 0.0, 21.0), 180.0);
-            let so = soldier::soldier_mesh(&soldier::pose_low_ready(), Vec3::new(6.0, 0.0, 19.2), 0.0, 0.0);
+            let op = op_mesh(
+                &PoseFrame::from_pose(c35::OperatorPose::Crouch),
+                Vec3::new(-7.4, 0.0, 21.0),
+                180.0,
+            );
+            let so = soldier::soldier_mesh(
+                &soldier::pose_low_ready(),
+                Vec3::new(6.0, 0.0, 19.2),
+                0.0,
+                0.0,
+            );
             let both = merge_meshes(&op, &so);
-            rig.still(&world, echo_pose(), Some(&both), &format!("{out_dir}/echo-patrol.png"));
+            rig.still(
+                &world,
+                echo_pose(),
+                Some(&both),
+                &format!("{out_dir}/echo-patrol.png"),
+            );
             rig.ledger("stills");
         }
         "poses" => {
@@ -444,7 +545,8 @@ fn main() {
             // traffic, with nothing between lens and raised hand
             // (the first staging put the barrier arm across his
             // chest and the verb read as hiding).
-            let so = soldier::soldier_mesh(&soldier::pose_halt(), Vec3::new(6.6, 0.0, 27.2), 0.0, 0.0);
+            let so =
+                soldier::soldier_mesh(&soldier::pose_halt(), Vec3::new(6.6, 0.0, 27.2), 0.0, 0.0);
             rig.still(
                 &world,
                 c35::scene::CameraPose {
@@ -506,17 +608,35 @@ fn run_drive(rig: &mut Rig, world: &WorldState, blk: &block::Block, out_dir: &st
     };
     let f0 = anim.update(0.0, &warm);
     let pa0 = *p_ctrl.agent();
-    let pwarm = c35::locomotion::AnimInput { pos: Vec3::new(pa0.pos.x, 0.0, pa0.pos.y), yaw: pa0.yaw, ..warm };
+    let pwarm = c35::locomotion::AnimInput {
+        pos: Vec3::new(pa0.pos.x, 0.0, pa0.pos.y),
+        yaw: pa0.yaw,
+        ..warm
+    };
     let pf0 = p_anim.update(0.0, &pwarm);
     let m0 = merge_meshes(
-        &build_operator_frame(&f0, Vec3::new(a0.pos.x, 0.0, a0.pos.y), 0.0, a0.yaw.to_degrees()),
-        &soldier::soldier_mesh(&pf0, Vec3::new(pa0.pos.x, 0.0, pa0.pos.y), 0.0, pa0.yaw.to_degrees()),
+        &build_operator_frame(
+            &f0,
+            Vec3::new(a0.pos.x, 0.0, a0.pos.y),
+            0.0,
+            a0.yaw.to_degrees(),
+        ),
+        &soldier::soldier_mesh(
+            &pf0,
+            Vec3::new(pa0.pos.x, 0.0, pa0.pos.y),
+            0.0,
+            pa0.yaw.to_degrees(),
+        ),
     );
     rig.renderer.update_operator(&m0);
     let mut anchor = Vec3::new(a0.pos.x, 0.0, a0.pos.y);
     for _ in 0..10 {
-        rig.renderer.render(&view, &follow_pose(anchor, a0.yaw), world, 0.0);
-        let _ = rig.renderer.device.poll(c35::wgpu::PollType::Wait { submission_index: None, timeout: None });
+        rig.renderer
+            .render(&view, &follow_pose(anchor, a0.yaw), world, 0.0);
+        let _ = rig.renderer.device.poll(c35::wgpu::PollType::Wait {
+            submission_index: None,
+            timeout: None,
+        });
     }
     let _ = rig.renderer.drain_gpu_samples();
 
@@ -551,9 +671,13 @@ fn run_drive(rig: &mut Rig, world: &WorldState, blk: &block::Block, out_dir: &st
         let pose = follow_pose(anchor, a.yaw);
         let t0 = Instant::now();
         rig.renderer.render(&view, &pose, world, i as f32 / 60.0);
-        let _ = rig.renderer.device.poll(c35::wgpu::PollType::Wait { submission_index: None, timeout: None });
+        let _ = rig.renderer.device.poll(c35::wgpu::PollType::Wait {
+            submission_index: None,
+            timeout: None,
+        });
         frame_ms.push(t0.elapsed().as_secs_f64() * 1000.0);
-        rig.renderer.observe_frame_ms(frame_ms.last().copied().unwrap_or(0.0));
+        rig.renderer
+            .observe_frame_ms(frame_ms.last().copied().unwrap_or(0.0));
         frames_run = i + 1;
 
         // THE LIGHT READ — the same field that baked the street,
@@ -566,11 +690,19 @@ fn run_drive(rig: &mut Rig, world: &WorldState, blk: &block::Block, out_dir: &st
         if lit {
             lit_frames += 1;
         }
-        let lamp = blk.field.nearest_lamp(sample).map(|(idx, _)| idx).unwrap_or(usize::MAX);
+        let lamp = blk
+            .field
+            .nearest_lamp(sample)
+            .map(|(idx, _)| idx)
+            .unwrap_or(usize::MAX);
         let s_fwd = Vec3::new(pa.yaw.sin(), 0.0, pa.yaw.cos());
         let to_op = Vec3::new(a.pos.x - pa.pos.x, 0.0, a.pos.y - pa.pos.y);
         let dist = to_op.length();
-        let facing_dot = if dist > 1e-4 { s_fwd.dot(to_op / dist) } else { 0.0 };
+        let facing_dot = if dist > 1e-4 {
+            s_fwd.dot(to_op / dist)
+        } else {
+            0.0
+        };
         csv.push_str(&format!(
             "{},{:.3},{:.2},{:.2},{},{:.2},{:.3},{},{},{:.2},{:.2},{:.1},{:.3},{:.2}\n",
             i,
@@ -589,7 +721,13 @@ fn run_drive(rig: &mut Rig, world: &WorldState, blk: &block::Block, out_dir: &st
             dist
         ));
         if i % 300 == 0 || (a.done && settle == 0) {
-            save_png(&rig.renderer, &rig.out_tex, rig.width, rig.height, &format!("{out_dir}/drive-{which}-f{i}.png"));
+            save_png(
+                &rig.renderer,
+                &rig.out_tex,
+                rig.width,
+                rig.height,
+                &format!("{out_dir}/drive-{which}-f{i}.png"),
+            );
         }
         if a.done && a.speed < 0.05 {
             settle += 1;
@@ -598,8 +736,15 @@ fn run_drive(rig: &mut Rig, world: &WorldState, blk: &block::Block, out_dir: &st
             }
         }
     }
-    save_png(&rig.renderer, &rig.out_tex, rig.width, rig.height, &format!("{out_dir}/drive-{which}-final.png"));
-    std::fs::write(format!("{out_dir}/drive-{which}-lightread.csv"), &csv).expect("write light read csv");
+    save_png(
+        &rig.renderer,
+        &rig.out_tex,
+        rig.width,
+        rig.height,
+        &format!("{out_dir}/drive-{which}-final.png"),
+    );
+    std::fs::write(format!("{out_dir}/drive-{which}-lightread.csv"), &csv)
+        .expect("write light read csv");
     println!(
         "drive {which}: {frames_run} frames, {:.1} m travelled, lit {}/{} frames ({:.1}%), frame mean {:.2} ms p95 {:.2} ms",
         ctrl.agent().distance,

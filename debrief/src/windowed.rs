@@ -25,7 +25,7 @@
 //! presentation, governor state — footage carries its own proof.
 //!
 //! Proof hooks (no interaction needed):
-//!   --smoke <secs> run the living street for N seconds, then exit 0
+//!   `--smoke <secs>` run the living street for N seconds, then exit 0
 //!   --proof        F1 capture → F2 capture → both crossings live →
 //!                  exit 0 (CSVs + frames land in --out)
 
@@ -35,7 +35,10 @@ use std::time::Instant;
 
 use c35::glam::{Vec2, Vec3};
 use c35::locomotion::{AnimInput, Animator, Controller};
-use c35::operator::{build_body_awareness, build_viewmodel, OperatorMesh, PoseFrame, ViewmodelConfig, ViewmodelPose, VIEWMODEL_EYE_Y};
+use c35::operator::{
+    build_body_awareness, build_viewmodel, OperatorMesh, PoseFrame, ViewmodelConfig, ViewmodelPose,
+    VIEWMODEL_EYE_Y,
+};
 use c35::scene::CameraPose;
 use c35::world::WorldState;
 use winit::application::ApplicationHandler;
@@ -76,7 +79,11 @@ impl FlyCam {
         Vec3::new(-sy * cp, sp, -cy * cp).normalize()
     }
     fn pose(&self) -> CameraPose {
-        CameraPose { eye: self.pos, target: self.pos + self.forward(), fov_y_deg: 50.0 }
+        CameraPose {
+            eye: self.pos,
+            target: self.pos + self.forward(),
+            fov_y_deg: 50.0,
+        }
     }
 }
 
@@ -256,7 +263,11 @@ impl App {
             frame_ema_ms: 0.0,
             frame_count: 0,
             capture_count: 0,
-            proof: if params.proof { ProofStage::F1Wait } else { ProofStage::Off },
+            proof: if params.proof {
+                ProofStage::F1Wait
+            } else {
+                ProofStage::Off
+            },
             proof_frames_at_stage: 0,
             smoke_secs: params.smoke_secs,
             should_exit: false,
@@ -385,11 +396,20 @@ impl App {
         if lit {
             d.lit_frames += 1;
         }
-        let lamp = self.blk.field.nearest_lamp(sample).map(|(idx, _)| idx).unwrap_or(usize::MAX);
+        let lamp = self
+            .blk
+            .field
+            .nearest_lamp(sample)
+            .map(|(idx, _)| idx)
+            .unwrap_or(usize::MAX);
         let s_fwd = Vec3::new(pa.yaw.sin(), 0.0, pa.yaw.cos());
         let to_op = Vec3::new(a.pos.x - pa.pos.x, 0.0, a.pos.y - pa.pos.y);
         let dist = to_op.length();
-        let facing_dot = if dist > 1e-4 { s_fwd.dot(to_op / dist) } else { 0.0 };
+        let facing_dot = if dist > 1e-4 {
+            s_fwd.dot(to_op / dist)
+        } else {
+            0.0
+        };
         d.csv.push_str(&format!(
             "{},{:.3},{:.2},{:.2},{},{:.2},{:.3},{},{},{:.2},{:.2},{:.1},{:.3},{:.2}\n",
             i,
@@ -440,7 +460,11 @@ impl App {
         let spot = Vec3::new(self.fly.pos.x, 0.0, self.fly.pos.z);
         let ground_y = self.fly.pos.y - VIEWMODEL_EYE_Y;
         let yaw_deg = self.fly.yaw.to_degrees() + 180.0;
-        let pose = if self.aiming { ViewmodelPose::Aim } else { ViewmodelPose::LowReady };
+        let pose = if self.aiming {
+            ViewmodelPose::Aim
+        } else {
+            ViewmodelPose::LowReady
+        };
         let vm = build_viewmodel(self.vm_config, pose, spot, ground_y, yaw_deg);
         if self.fly.pitch < -0.2 {
             let body = build_body_awareness(spot, ground_y, yaw_deg);
@@ -471,7 +495,11 @@ impl App {
                     a.yaw.to_degrees(),
                 )
             }
-            None => op_mesh(&PoseFrame::from_pose(c35::OperatorPose::StandReady), POST, POST_YAW_DEG),
+            None => op_mesh(
+                &PoseFrame::from_pose(c35::OperatorPose::StandReady),
+                POST,
+                POST_YAW_DEG,
+            ),
         };
         let mut mesh = merge_meshes(&op, &so);
         if let Some(fp) = self.build_first_person() {
@@ -490,24 +518,36 @@ impl App {
         let world = self.world;
         let t = self.sim_time;
         let (w, h) = self.size;
-        let Some(renderer) = &mut self.renderer else { return };
+        let Some(renderer) = &mut self.renderer else {
+            return;
+        };
         let Some(mesh) = &self.last_mesh else { return };
         renderer.update_operator(mesh);
         let format = renderer.output_format();
-        let tex = renderer.device.create_texture(&c35::wgpu::TextureDescriptor {
-            label: Some("debrief window capture"),
-            size: c35::wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: c35::wgpu::TextureDimension::D2,
-            format,
-            usage: c35::wgpu::TextureUsages::RENDER_ATTACHMENT | c35::wgpu::TextureUsages::COPY_SRC,
-            view_formats: &[],
-        });
+        let tex = renderer
+            .device
+            .create_texture(&c35::wgpu::TextureDescriptor {
+                label: Some("debrief window capture"),
+                size: c35::wgpu::Extent3d {
+                    width: w,
+                    height: h,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: c35::wgpu::TextureDimension::D2,
+                format,
+                usage: c35::wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | c35::wgpu::TextureUsages::COPY_SRC,
+                view_formats: &[],
+            });
         let view = tex.create_view(&Default::default());
         for _ in 0..12 {
             renderer.render(&view, &pose, &world, t);
-            let _ = renderer.device.poll(c35::wgpu::PollType::Wait { submission_index: None, timeout: None });
+            let _ = renderer.device.poll(c35::wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            });
         }
         // Readback (the headless save_png's shape, format-aware).
         let bpr = (w * 4).div_ceil(256) * 256;
@@ -517,9 +557,12 @@ impl App {
             usage: c35::wgpu::BufferUsages::MAP_READ | c35::wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let mut encoder = renderer.device.create_command_encoder(&c35::wgpu::CommandEncoderDescriptor {
-            label: Some("capture copy"),
-        });
+        let mut encoder =
+            renderer
+                .device
+                .create_command_encoder(&c35::wgpu::CommandEncoderDescriptor {
+                    label: Some("capture copy"),
+                });
         encoder.copy_texture_to_buffer(
             c35::wgpu::TexelCopyTextureInfo {
                 texture: &tex,
@@ -535,11 +578,18 @@ impl App {
                     rows_per_image: Some(h),
                 },
             },
-            c35::wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+            c35::wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
         );
         renderer.queue.submit([encoder.finish()]);
         buf.slice(..).map_async(c35::wgpu::MapMode::Read, |_| {});
-        let _ = renderer.device.poll(c35::wgpu::PollType::Wait { submission_index: None, timeout: None });
+        let _ = renderer.device.poll(c35::wgpu::PollType::Wait {
+            submission_index: None,
+            timeout: None,
+        });
         let range = buf.slice(..).get_mapped_range();
         let swap_rb = format == c35::wgpu::TextureFormat::Bgra8UnormSrgb;
         let mut pixels = Vec::with_capacity((w * h * 4) as usize);
@@ -547,7 +597,7 @@ impl App {
             let start = row * bpr as usize;
             let line = &range[start..start + (w * 4) as usize];
             if swap_rb {
-                for px in line.chunks_exact(4) {
+                for px in line.as_chunks::<4>().0 {
                     pixels.extend_from_slice(&[px[2], px[1], px[0], px[3]]);
                 }
             } else {
@@ -563,24 +613,20 @@ impl App {
 
     fn proof_advance(&mut self) {
         match self.proof {
-            ProofStage::F1Wait => {
-                if self.frame_count - self.proof_frames_at_stage >= 30 {
-                    let p = format!("{}/window-f1-hero.png", self.out_dir);
-                    self.capture(&p);
-                    self.mode = CamMode::Bookmark(echo_pose());
-                    self.proof = ProofStage::F2Wait;
-                    self.proof_frames_at_stage = self.frame_count;
-                    println!("[proof] F1 captured; F2 (patrol-echo rig) held");
-                }
+            ProofStage::F1Wait if self.frame_count - self.proof_frames_at_stage >= 30 => {
+                let p = format!("{}/window-f1-hero.png", self.out_dir);
+                self.capture(&p);
+                self.mode = CamMode::Bookmark(echo_pose());
+                self.proof = ProofStage::F2Wait;
+                self.proof_frames_at_stage = self.frame_count;
+                println!("[proof] F1 captured; F2 (patrol-echo rig) held");
             }
-            ProofStage::F2Wait => {
-                if self.frame_count - self.proof_frames_at_stage >= 30 {
-                    let p = format!("{}/window-f2-echo.png", self.out_dir);
-                    self.capture(&p);
-                    self.proof = ProofStage::OpenDrive;
-                    println!("[proof] F2 captured; open crossing next");
-                    self.start_drive("open");
-                }
+            ProofStage::F2Wait if self.frame_count - self.proof_frames_at_stage >= 30 => {
+                let p = format!("{}/window-f2-echo.png", self.out_dir);
+                self.capture(&p);
+                self.proof = ProofStage::OpenDrive;
+                println!("[proof] F2 captured; open crossing next");
+                self.start_drive("open");
             }
             _ => {}
         }
@@ -602,7 +648,9 @@ impl App {
 
         // Free-fly movement (not while a crossing owns the camera).
         if matches!(self.mode, CamMode::Fly) {
-            let speed = if self.keys.contains(&KeyCode::ShiftLeft) || self.keys.contains(&KeyCode::ShiftRight) {
+            let speed = if self.keys.contains(&KeyCode::ShiftLeft)
+                || self.keys.contains(&KeyCode::ShiftRight)
+            {
                 90.0
             } else {
                 22.0
@@ -666,14 +714,16 @@ impl App {
             }
             match surface.get_current_texture() {
                 Ok(frame) => {
-                    let view = frame.texture.create_view(&c35::wgpu::TextureViewDescriptor::default());
+                    let view = frame
+                        .texture
+                        .create_view(&c35::wgpu::TextureViewDescriptor::default());
                     renderer.render(&view, &pose, &world, time);
                     frame.present();
                     renderer.observe_frame_ms(dt as f64 * 1000.0);
                     self.frame_count += 1;
 
                     // The ledger rides the title bar.
-                    if self.frame_count % 30 == 0 {
+                    if self.frame_count.is_multiple_of(30) {
                         let (shadow_ms, scene_ms) = renderer.drain_gpu_samples();
                         let gpu = if scene_ms.is_empty() {
                             "gpu n/a".to_string()
@@ -765,10 +815,15 @@ impl ApplicationHandler for App {
         }
         let attrs = Window::default_attributes()
             .with_title("DeBrief — Greyport")
-            .with_inner_size(winit::dpi::LogicalSize::new(self.size.0 as f64, self.size.1 as f64));
+            .with_inner_size(winit::dpi::LogicalSize::new(
+                self.size.0 as f64,
+                self.size.1 as f64,
+            ));
         let window = Arc::new(event_loop.create_window(attrs).expect("create window"));
         let instance = c35::create_instance();
-        let surface = instance.create_surface(window.clone()).expect("create surface");
+        let surface = instance
+            .create_surface(window.clone())
+            .expect("create surface");
         let size = window.inner_size();
         self.size = (size.width.max(1), size.height.max(1));
         let mut renderer = c35::pollster::block_on(c35::Renderer::new_for_surface(
@@ -799,13 +854,20 @@ impl ApplicationHandler for App {
             r.internal_size().0,
             r.internal_size().1
         );
-        println!("governor         : pinned at level 0 (proof rig law; 0-4 re-pin, ` releases to live)");
+        println!(
+            "governor         : pinned at level 0 (proof rig law; 0-4 re-pin, ` releases to live)"
+        );
         println!("controls         : click = mouse capture · WASD/QE fly · Shift = speed · Esc = release · F1/F2 = hero/echo rigs · F3/F4 = open/shadow crossing · P = still · right mouse = aim · C = street/assault viewmodel");
         self.start = Instant::now();
         self.last_frame = Instant::now();
     }
 
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, _window_id: WindowId, event: WindowEvent) {
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        _window_id: WindowId,
+        event: WindowEvent,
+    ) {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => {
@@ -829,7 +891,13 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::KeyboardInput {
-                event: KeyEvent { physical_key: PhysicalKey::Code(code), state, repeat, .. },
+                event:
+                    KeyEvent {
+                        physical_key: PhysicalKey::Code(code),
+                        state,
+                        repeat,
+                        ..
+                    },
                 ..
             } => {
                 if code == KeyCode::Escape && state == ElementState::Pressed {
@@ -884,7 +952,10 @@ impl ApplicationHandler for App {
                         }
                         KeyCode::KeyP => {
                             self.capture_count += 1;
-                            let p = format!("{}/window-capture-{}.png", self.out_dir, self.capture_count);
+                            let p = format!(
+                                "{}/window-capture-{}.png",
+                                self.out_dir, self.capture_count
+                            );
                             self.capture(&p);
                             return;
                         }
@@ -916,7 +987,12 @@ impl ApplicationHandler for App {
         }
     }
 
-    fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device_id: winit::event::DeviceId, event: DeviceEvent) {
+    fn device_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        _device_id: winit::event::DeviceId,
+        event: DeviceEvent,
+    ) {
         if let DeviceEvent::MouseMotion { delta: (dx, dy) } = event {
             if self.grabbed && !matches!(self.mode, CamMode::Drive) {
                 self.touch();

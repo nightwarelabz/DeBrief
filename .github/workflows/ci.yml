@@ -1,0 +1,155 @@
+# Every pull request and every push to main.
+# `check` is CPU-only. `render` is the display/GPU job: it installs lavapipe
+# and (for the window) xvfb, and fails if those paths do not actually run.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: fmt, clippy, build, test, doc
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: "1.99.1"
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        run: cargo clippy --all-targets --all-features --locked -- -D warnings
+
+      - name: cargo build
+        run: cargo build --all-targets --all-features --locked
+
+      - name: cargo test
+        run: cargo test --all-targets --all-features --locked
+
+      - name: cargo doc
+        run: cargo doc --no-deps --locked
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+      - name: Headless survey (no GPU, no display)
+        run: |
+          set -euo pipefail
+          out="${RUNNER_TEMP}/survey"
+          log="${RUNNER_TEMP}/survey.log"
+          mkdir -p "${out}"
+          ./target/debug/debrief --mode survey --out "${out}" | tee "${log}"
+          grep -q '^block: ' "${log}"
+          grep -Eq 'block: [1-9][0-9]* vertices, [1-9][0-9]* triangles, [1-9][0-9]* lamps' "${log}"
+          grep -q 'anchor survey' "${log}"
+          grep -q '^kind,x,y,z,height_m,clearance_m,opens$' "${log}"
+
+  render:
+    name: gpu headless still + windowed display
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: "1.99.1"
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+
+      - name: Install lavapipe and a virtual display
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libxkbcommon-x11-0 mesa-vulkan-drivers xvfb
+          icd=""
+          for candidate in \
+            /usr/share/vulkan/icd.d/lvp_icd.json \
+            /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+          do
+            if [ -f "${candidate}" ]; then
+              icd="${candidate}"
+              break
+            fi
+          done
+          if [ -z "${icd}" ]; then
+            echo "lavapipe ICD missing; the GPU job must fail rather than skip"
+            ls -la /usr/share/vulkan/icd.d || true
+            exit 1
+          fi
+          echo "VK_DRIVER_FILES=${icd}" >> "${GITHUB_ENV}"
+          echo "Using lavapipe ICD ${icd}"
+
+      - name: cargo build
+        run: cargo build --locked
+
+      - name: Headless still on lavapipe
+        env:
+          WGPU_BACKEND: vulkan
+          COMIGEN_PIN_ISO: "2026-10-30T12:00:00Z"
+          COMIGEN_LAT: "40.7"
+          COMIGEN_LON: "-74.0"
+        run: |
+          set -euo pipefail
+          export XDG_RUNTIME_DIR="${RUNNER_TEMP}/xdg"
+          mkdir -p "${XDG_RUNTIME_DIR}"
+          chmod 700 "${XDG_RUNTIME_DIR}"
+          out="${RUNNER_TEMP}/still"
+          mkdir -p "${out}"
+          timeout 180 ./target/debug/debrief --mode still --width 64 --height 64 --present ps15 --out "${out}"
+          python3 - "${out}" <<'PY'
+          import pathlib, sys
+          out = pathlib.Path(sys.argv[1])
+          sig = b"\x89PNG\r\n\x1a\n"
+          for name in ("hero-street.png", "echo-patrol.png"):
+              data = (out / name).read_bytes()
+              if not data.startswith(sig) or len(data) < 1000:
+                  raise SystemExit(f"{name} is not a rendered PNG ({len(data)} bytes)")
+              print(f"{name} {len(data)} bytes")
+          PY
+
+      - name: Windowed smoke on xvfb
+        env:
+          WGPU_BACKEND: vulkan
+          COMIGEN_PIN_ISO: "2026-10-30T12:00:00Z"
+          COMIGEN_LAT: "40.7"
+          COMIGEN_LON: "-74.0"
+        run: |
+          set -euo pipefail
+          export XDG_RUNTIME_DIR="${RUNNER_TEMP}/xdg"
+          mkdir -p "${XDG_RUNTIME_DIR}"
+          chmod 700 "${XDG_RUNTIME_DIR}"
+          unset WAYLAND_DISPLAY || true
+          out="${RUNNER_TEMP}/windowed"
+          log="${RUNNER_TEMP}/windowed.log"
+          mkdir -p "${out}"
+          timeout 180 xvfb-run -a ./target/debug/debrief \
+            --mode windowed --smoke 1 --width 320 --height 180 --out "${out}" \
+            | tee "${log}"
+          grep -q '\[smoke\]' "${log}"
+          grep -Eq '\[smoke\].*[1-9][0-9]* frames rendered' "${log}"

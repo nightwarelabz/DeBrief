@@ -28,9 +28,10 @@
 //! same fixed step, on the reality layer's clock (seed 0xC35_0001,
 //! the engine's own), and its fog_add rides on the reality
 //! layer's fog density at bind time — the weather module's host
-//! contract, step 4. Wetness is computed every step and carried
-//! in the ledger lines; this host owns no surface records for
-//! contract step 3 to feed yet (see step_sim).
+//! contract, step 4. Wetness is computed every step, carried
+//! in the ledger lines, and bound to the renderer's wet pass
+//! (set_wetness at both render sites); this host owns no surface
+//! records for contract step 3 to feed yet (see step_sim).
 //!
 //! Proof hooks (no interaction needed):
 //!   --smoke <secs> run the living street for N seconds, then exit 0
@@ -552,6 +553,7 @@ impl App {
         let (w, h) = self.size;
         let Some(renderer) = &mut self.renderer else { return };
         let Some(mesh) = &self.last_mesh else { return };
+        renderer.set_wetness(self.weather.wetness());
         renderer.update_operator(mesh);
         let format = renderer.output_format();
         let tex = renderer.device.create_texture(&c35::wgpu::TextureDescriptor {
@@ -721,6 +723,7 @@ impl App {
         {
             let surface = self.surface.as_ref().unwrap();
             let renderer = self.renderer.as_mut().unwrap();
+            renderer.set_wetness(self.weather.wetness());
             if let Some(mesh) = &self.last_mesh {
                 renderer.update_operator(mesh);
             }

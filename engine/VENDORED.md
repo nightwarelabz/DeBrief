@@ -2,7 +2,7 @@
 
 The contents of `engine/` are a vendored snapshot of the **CASM-PS15**
 engine (https://github.com/nightwarelabz/CASM-PS15), taken at commit
-`c4c0d1f62a42adad42b48bda80255e9294575325` (engine v1 + windowed host).
+`f5e4ac0a3275d8e6f2d372c5b183dd489267337e` (engine v1 + windowed host + perspective-correct texture mapping).
 
 DeBrief builds and runs entirely against this copy — no Rust, no Cargo,
 no external engine checkout. To update the engine: copy the newer

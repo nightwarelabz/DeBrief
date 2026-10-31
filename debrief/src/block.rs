@@ -205,9 +205,7 @@ impl<'a> B<'a> {
         let segs = 6;
         let mut prev = a;
         for s in 1..=segs {
-            let t = s as f32 / segs as f32;
-            let mut p = a.lerp(b, t);
-            p.y -= sag * 4.0 * t * (1.0 - t);
+            let p = catenary(a, b, sag, s as f32 / segs as f32);
             let up = Vec3::new(0.0, 0.018, 0.0);
             self.quad_lit(
                 [prev + up, p + up, p - up, prev - up],
@@ -219,6 +217,26 @@ impl<'a> B<'a> {
             prev = p;
         }
     }
+}
+
+/// Point on the sagging wire from `a` to `b`. `t` is 0 at `a` and 1
+/// at `b`; the dip equals `sag` at mid-span.
+fn catenary(a: Vec3, b: Vec3, sag: f32, t: f32) -> Vec3 {
+    let mut p = a.lerp(b, t);
+    p.y -= sag * 4.0 * t * (1.0 - t);
+    p
+}
+
+/// Horizontal distance from `p` to the nearest occluder footprint —
+/// the swing clearance a wire in open air actually has.
+fn horizontal_clearance(p: Vec3, occs: &[Occluder]) -> f32 {
+    let mut best = f32::MAX;
+    for o in occs {
+        let dx = if p.x < o.min.x { o.min.x - p.x } else if p.x > o.max.x { p.x - o.max.x } else { 0.0 };
+        let dz = if p.z < o.min.z { o.min.z - p.z } else if p.z > o.max.z { p.z - o.max.z } else { 0.0 };
+        best = best.min((dx * dx + dz * dz).sqrt());
+    }
+    best
 }
 
 /// Deterministic lit-window pick (a hash, not an RNG — the block
@@ -638,21 +656,31 @@ fn anchor_survey(field: &LightField, lamp_heads: &[Vec3]) -> Vec<Anchor> {
         }
     }
     // Wire runs: the four cross spans (midpoints) + along-street runs.
+    // The point is the same catenary the mesh builds, at mid-span,
+    // and the endpoints are the ones build_block actually draws —
+    // the old table floated the cross-span anchors above the wire
+    // and stored a clearance that was not the distance to either
+    // facade.
     for &zc in &[-32.0f32, -4.0, 12.0, 32.0] {
+        let p = catenary(Vec3::new(-7.55, 5.95, zc), Vec3::new(10.4, 7.6, zc), 0.85, 0.5);
         v.push(Anchor {
-            pos: Vec3::new(1.4, 6.6, zc),
+            pos: p,
             kind: "wire run (cross span)",
-            height: 6.6,
-            clearance: 17.8,
+            height: p.y,
+            clearance: horizontal_clearance(p, &field.occluders),
             opens: "a street crossing above patrol eye line; drops to either sidewalk",
         });
     }
     for &zc in &[-36.0f32, -18.0, 0.0, 18.0, 36.0] {
+        // West poles stand 4 m apart; these z values are still the
+        // exact midpoints of drawn spans (zc − 2 .. zc + 2), sampled
+        // one every 18 m as the table always sampled them.
+        let p = catenary(Vec3::new(-7.55, 5.92, zc - 2.0), Vec3::new(-7.55, 5.92, zc + 2.0), 0.55, 0.5);
         v.push(Anchor {
-            pos: Vec3::new(-7.55, 5.65, zc),
+            pos: p,
             kind: "wire run (along street)",
-            height: 5.65,
-            clearance: 3.1,
+            height: p.y,
+            clearance: horizontal_clearance(p, &field.occluders),
             opens: "a short slide along the tenement wall; lamp-to-lamp hops",
         });
     }
@@ -694,7 +722,6 @@ fn anchor_survey(field: &LightField, lamp_heads: &[Vec3]) -> Vec<Anchor> {
             opens: "a short hop only — across the pool, never along it",
         });
     }
-    let _ = field;
     v
 }
 
@@ -708,4 +735,172 @@ pub fn anchors_csv(anchors: &[Anchor]) -> String {
         ));
     }
     s
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{anchors_csv, build_block, LAMP_HEAD_Y};
+    use crate::light::{Occluder, LIT_THRESHOLD};
+    use c35::glam::Vec3;
+
+    /// The clearance definition restated independently of the
+    /// survey's own helper: horizontal distance from `p` to the
+    /// nearest occluder footprint (0 when the point is over one).
+    fn nearest_occluder(p: Vec3, occs: &[Occluder]) -> f32 {
+        occs.iter()
+            .map(|o| {
+                let dx = p.x.clamp(o.min.x, o.max.x) - p.x;
+                let dz = p.z.clamp(o.min.z, o.max.z) - p.z;
+                (dx * dx + dz * dz).sqrt()
+            })
+            .fold(f32::MAX, f32::min)
+    }
+
+    #[test]
+    fn mesh_is_finite_indexed_and_within_the_bake_range() {
+        let blk = build_block();
+        assert!(!blk.mesh.vertices.is_empty());
+        assert_eq!(blk.mesh.indices.len() % 3, 0);
+        for i in &blk.mesh.indices {
+            assert!((*i as usize) < blk.mesh.vertices.len());
+        }
+        for v in &blk.mesh.vertices {
+            assert!(v.position.iter().all(|c| c.is_finite()));
+            assert!(
+                v.light.is_finite() && (0.0..=1.2).contains(&v.light),
+                "light {}",
+                v.light
+            );
+        }
+        assert!(blk
+            .census
+            .contains(&format!("{} triangles", blk.mesh.indices.len() / 3)));
+        assert!(blk
+            .census
+            .contains(&format!("{} lamps", blk.field.lamps.len())));
+    }
+
+    #[test]
+    fn lamps_are_twentytwo_on_the_west_and_two_on_the_east() {
+        let blk = build_block();
+        assert_eq!(blk.field.lamps.len(), 24);
+        assert_eq!(
+            blk.field.lamps.iter().filter(|l| l.head.x < 0.0).count(),
+            22
+        );
+        assert_eq!(blk.field.lamps.iter().filter(|l| l.head.x > 0.0).count(), 2);
+        assert!(blk
+            .field
+            .lamps
+            .iter()
+            .all(|l| (l.head.y - LAMP_HEAD_Y).abs() < 1e-4));
+    }
+
+    #[test]
+    fn open_route_reads_lit_and_the_shadow_route_mostly_does_not() {
+        let blk = build_block();
+        let mut open_lit = 0;
+        let mut shadow_lit = 0;
+        let mut n = 0;
+        let mut z = -44.0f32;
+        while z <= 44.0 {
+            if blk.field.lit(Vec3::new(-2.0, 1.15, z)) {
+                open_lit += 1;
+            }
+            if blk.field.lit(Vec3::new(8.9, 1.15, z)) {
+                shadow_lit += 1;
+            }
+            n += 1;
+            z += 4.0;
+        }
+        assert_eq!(
+            open_lit, n,
+            "the open crossing should read lit at chest height"
+        );
+        assert!(shadow_lit > 0, "the two east lamps are the honest blips");
+        assert!(
+            shadow_lit < n / 2,
+            "shadow route lit {shadow_lit}/{n}, threshold {LIT_THRESHOLD}"
+        );
+    }
+
+    #[test]
+    fn interiors_are_dark_and_the_facade_is_not_in_its_own_shadow() {
+        let blk = build_block();
+        let inside = blk.field.exposure(Vec3::new(13.0, 2.0, -12.0));
+        assert!(inside < LIT_THRESHOLD, "warehouse interior {inside}");
+        // A facade vertex sits on the occluder face, inside a lamp's
+        // reach. Exposure must survive the end-sliver trim; a zero
+        // here is the wall in its own shadow.
+        let tenement = blk.field.exposure(Vec3::new(-10.4, 3.0, -4.5));
+        assert!(tenement > 0.0, "tenement facade self-occluded ({tenement})");
+        let warehouse = blk.field.exposure(Vec3::new(10.4, 3.0, -20.0));
+        assert!(
+            warehouse > 0.0,
+            "warehouse facade self-occluded ({warehouse})"
+        );
+    }
+
+    #[test]
+    fn wire_anchors_sit_on_the_drawn_wire_and_name_the_real_clearance() {
+        let blk = build_block();
+        let wires: Vec<_> = blk
+            .anchors
+            .iter()
+            .filter(|a| a.kind.starts_with("wire"))
+            .collect();
+        assert_eq!(wires.iter().filter(|a| a.kind.contains("cross")).count(), 4);
+        assert_eq!(wires.iter().filter(|a| a.kind.contains("along")).count(), 5);
+        // The wires build_block draws, restated from its wire calls:
+        // (anchor z, end a, end b, sag). An anchor earns its row only
+        // by sitting at the mid-span of one of these.
+        let mut drawn: Vec<(f32, Vec3, Vec3, f32)> = Vec::new();
+        for &zc in &[-32.0f32, -4.0, 12.0, 32.0] {
+            drawn.push((zc, Vec3::new(-7.55, 5.95, zc), Vec3::new(10.4, 7.6, zc), 0.85));
+        }
+        for &zc in &[-36.0f32, -18.0, 0.0, 18.0, 36.0] {
+            drawn.push((
+                zc,
+                Vec3::new(-7.55, 5.92, zc - 2.0),
+                Vec3::new(-7.55, 5.92, zc + 2.0),
+                0.55,
+            ));
+        }
+        for a in wires {
+            let &(_, wa, wb, sag) = drawn
+                .iter()
+                .find(|&&(zc, _, _, _)| (a.pos.z - zc).abs() < 1e-4)
+                .expect("wire anchor at a z no drawn wire spans");
+            // Mid-span: the average of the ends, dipped by the sag.
+            let mut want = wa.lerp(wb, 0.5);
+            want.y -= sag;
+            assert!(
+                a.pos.distance(want) < 1e-4,
+                "{} sits at {:?}, the drawn wire's mid-span is {want:?}",
+                a.kind,
+                a.pos
+            );
+            assert!((a.height - a.pos.y).abs() < 1e-4);
+            let clearance = nearest_occluder(a.pos, &blk.field.occluders);
+            assert!(
+                (a.clearance - clearance).abs() < 1e-3,
+                "{} clearance {} vs geometry {clearance}",
+                a.kind,
+                a.clearance
+            );
+            // Mid-span of every wire on this block sags below the
+            // attachment band. The old cross-span table said 6.6.
+            assert!(a.pos.y < 6.1, "{} floated at y {}", a.kind, a.pos.y);
+            assert!(a.clearance > 1.0, "{} reports no room to swing", a.kind);
+        }
+    }
+
+    #[test]
+    fn anchor_csv_is_one_row_per_candidate() {
+        let blk = build_block();
+        let csv = anchors_csv(&blk.anchors);
+        assert!(csv.starts_with("kind,x,y,z,height_m,clearance_m,opens\n"));
+        assert_eq!(csv.lines().count(), blk.anchors.len() + 1);
+        assert!(csv.contains("\"the east rooftop line"));
+    }
 }

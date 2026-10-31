@@ -17,8 +17,10 @@
 //!   --mode survey  no renderer: block census, the grapple anchor
 //!                  survey, and the light field's route profiles
 //!   --mode windowed  the same block LIVE in a real window
-//!                  (see windowed.rs; --proof / --smoke <secs> run
-//!                  it unattended for the proof rig)
+//!                  (see windowed.rs; the operator is the player
+//!                  on the engine's dual-mode controller; --fly
+//!                  restores the free-fly camera; --proof /
+//!                  --smoke <secs> run it unattended)
 //!
 //! Reality rig (same contract as the vista host — pins are read by
 //! this host only, never by the engine crate):
@@ -399,6 +401,7 @@ fn main() {
             height,
             proof: args.iter().any(|a| a == "--proof"),
             smoke_secs: arg_value(&args, "--smoke").and_then(|v| v.parse().ok()),
+            fly: args.iter().any(|a| a == "--fly"),
         };
         windowed::run(blk, &reality, params);
         return;

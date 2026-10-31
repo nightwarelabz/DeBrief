@@ -6,20 +6,33 @@
 //! wgpu surface. PS1.5 presentation by default. The patrol walks his
 //! loop in real time on the same fixed 60 Hz simulation step the
 //! headless drives use, his pose frame carried from the very update
-//! that stepped him; the operator stands his post. This is a camera
-//! and a living street, not the game yet: no player control of
-//! either man.
+//! that stepped him. The operator is the PLAYER: the engine's
+//! dual-mode controller (one TravSim core, first / third-person
+//! rigs) walks him on the street, stepped four 240 Hz engine ticks
+//! inside each 60 Hz host step. The scripted crossings (F3 / F4)
+//! still run their own man, as before.
 //!
-//! Controls (the comigen-windowed rig — the owner's hands know it):
+//! Controls — two camera laws in one host:
+//!   PLAYER (default):
 //!   click          capture the mouse      Esc   release it
+//!   WASD           move (Run)             mouse look
+//!   right mouse    aim (Walk while held)  Shift sprint
+//!   Ctrl           crouch                 Space jump / mantle
+//!   E              grapple: press fires, hold keeps the rope,
+//!                  release detaches with momentum
+//!   V              toggle first / third-person rig (feet unmoved)
+//!   C              toggle the viewmodel kit: street / assault
+//!   FLY (--fly — the survey/still camera law, unchanged):
 //!   WASD / QE      fly                    Shift speed
+//!   right mouse    aim the viewmodel     C     viewmodel kit
+//!   SHARED:
 //!   F1 / F2        the hero-street / patrol-echo camera rigs, held
+//!                  (input hands the camera back to the session's
+//!                  own law — player, or fly under --fly)
 //!   F3 / F4        run the open / shadow crossing live, follow cam
 //!   0–4 / `        governor pin / release (starts pinned at 0, the
 //!                  proof rig's law; a pin is absolute)
 //!   P              capture a still of the current frame (PNG, --out)
-//!   right mouse    aim the viewmodel (fly mode)
-//!   C              toggle the viewmodel kit: street / assault
 //!
 //! The ledger rides the title bar: frame ms, GPU ms, draws, backend,
 //! presentation, governor state — footage carries its own proof.
@@ -42,8 +55,11 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 
+use c35::controller::{ControllerFrame, PlayerController, PlayerInput, SpeedTier, ViewMode};
 use c35::glam::{Vec2, Vec3};
 use c35::locomotion::{AnimInput, Animator, Controller};
+use c35::traversal::physics::{BoxCollider, StaticWorld};
+use c35::traversal::surface::{SurfaceKind, SurfaceRecord};
 use c35::operator::{build_body_awareness, build_viewmodel, OperatorMesh, PoseFrame, ViewmodelConfig, ViewmodelPose, VIEWMODEL_EYE_Y};
 use c35::scene::CameraPose;
 use c35::world::WorldState;
@@ -54,8 +70,9 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Window, WindowId};
 
 use crate::{
-    block::Block, configure_scene, drive_route, echo_pose, flat_ground, follow_pose, hero_pose,
-    merge_meshes, op_mesh, patrol_legs, print_reality, soldier, Reality,
+    block::{Block, BLOCK_HALF_Z},
+    configure_scene, drive_route, echo_pose, flat_ground, follow_pose, hero_pose, merge_meshes,
+    op_mesh, patrol_legs, print_reality, soldier, Reality,
 };
 
 const STEP: f32 = 1.0 / 60.0;
@@ -63,6 +80,87 @@ const STEP: f32 = 1.0 / 60.0;
 /// street: spot (-2.0, 0, 3.0), yaw 168°, stand-ready.
 const POST: Vec3 = Vec3::new(-2.0, 0.0, 3.0);
 const POST_YAW_DEG: f32 = 168.0;
+
+/// The collision world the engine controller walks on. block.rs
+/// builds render geometry and a light field only — it exposes no
+/// surface the traversal capsule can consume — so this is the
+/// minimal honest set, built from the block's own constants:
+/// the street slab (x −7.2..7.2 at y 0, the plane call in
+/// build_block), the two raised sidewalks (x to ±10.4, top
+/// 0.12 — the curb is a 0.12 m rise, inside the capsule's step
+/// rule, so the slab tops ARE the curb data), and four wall
+/// boxes on the building lines (facades at x ±10.4, end caps at
+/// z ∓48) so the capsule — and the third-person boom's raycast,
+/// and the grapple's segment cast — meet the buildings instead
+/// of passing through them. Lamp poles, barriers and other
+/// furniture are NOT colliders in this slice (stated plainly:
+/// the player walks through a lamp pole). Surface records are
+/// dry: this host still builds no weather-written records.
+fn player_world() -> StaticWorld {
+    let mut w = StaticWorld::new();
+    let bx = |w: &mut StaticWorld, min: Vec3, max: Vec3, kind: SurfaceKind| {
+        w.add(BoxCollider::new(min, max, SurfaceRecord::dry(kind)));
+    };
+    // The ground itself: one slab under the whole block at y 0.
+    bx(
+        &mut w,
+        Vec3::new(-16.0, -1.0, -BLOCK_HALF_Z),
+        Vec3::new(16.0, 0.0, BLOCK_HALF_Z),
+        SurfaceKind::Asphalt,
+    );
+    // Sidewalks (raised slabs, top 0.12).
+    bx(
+        &mut w,
+        Vec3::new(7.2, -0.1, -BLOCK_HALF_Z),
+        Vec3::new(10.4, 0.12, BLOCK_HALF_Z),
+        SurfaceKind::Concrete,
+    );
+    bx(
+        &mut w,
+        Vec3::new(-10.4, -0.1, -BLOCK_HALF_Z),
+        Vec3::new(-7.2, 0.12, BLOCK_HALF_Z),
+        SurfaceKind::Concrete,
+    );
+    // Building lines: warehouse row east (facades to 14 m),
+    // tenements west (to 17 m + parapet), end caps north (18 m)
+    // and south (9 m) — the block's own heights from build_block.
+    bx(
+        &mut w,
+        Vec3::new(10.4, 0.0, -BLOCK_HALF_Z),
+        Vec3::new(11.0, 14.0, BLOCK_HALF_Z),
+        SurfaceKind::Brick,
+    );
+    bx(
+        &mut w,
+        Vec3::new(-11.0, 0.0, -BLOCK_HALF_Z),
+        Vec3::new(-10.4, 17.5, BLOCK_HALF_Z),
+        SurfaceKind::Brick,
+    );
+    bx(
+        &mut w,
+        Vec3::new(-16.0, 0.0, -BLOCK_HALF_Z - 1.0),
+        Vec3::new(16.0, 18.0, -BLOCK_HALF_Z),
+        SurfaceKind::Brick,
+    );
+    bx(
+        &mut w,
+        Vec3::new(-16.0, 0.0, BLOCK_HALF_Z),
+        Vec3::new(16.0, 9.0, BLOCK_HALF_Z + 1.0),
+        SurfaceKind::Brick,
+    );
+    w
+}
+
+/// Ground height for the controller's locomotion animator (the
+/// pose's ground reference only — physics reads player_world):
+/// the same street / sidewalk split as the collision slabs.
+fn player_ground(x: f32, z: f32) -> f32 {
+    if z.abs() <= BLOCK_HALF_Z && (7.2..=10.4).contains(&x.abs()) {
+        0.12
+    } else {
+        0.0
+    }
+}
 
 struct FlyCam {
     pos: Vec3,
@@ -90,6 +188,9 @@ impl FlyCam {
 }
 
 enum CamMode {
+    /// The player: the engine dual-mode controller's active rig
+    /// (first person by default, V toggles third person).
+    Player,
     /// Free-fly (seeded from a rig when input takes a held frame).
     Fly,
     /// A canonical rig, held exactly until fly input arrives.
@@ -165,6 +266,9 @@ pub struct Params {
     pub height: u32,
     pub proof: bool,
     pub smoke_secs: Option<f32>,
+    /// --fly: restore the free-fly camera as the session's law
+    /// (the player controller is not driven).
+    pub fly: bool,
 }
 
 struct App {
@@ -202,13 +306,37 @@ struct App {
     base_fog_density: f32,
     last_mesh: Option<OperatorMesh>,
 
+    // The player: the engine's dual-mode controller over its
+    // own static world, stepped in step_sim. Inert unless the
+    // mode is Player (a --fly or --proof session never steps it).
+    player: PlayerController,
+    player_world: StaticWorld,
+    player_frame: Option<ControllerFrame>,
+    /// Mouse travel accumulated between fixed steps (radians);
+    /// consumed — split across the step's four engine ticks —
+    /// by the next player step.
+    pending_look: Vec2,
+    /// Edges queued by key events, consumed by the first engine
+    /// tick of the next player step (one press can never fire
+    /// twice, however the events and steps interleave).
+    pending_jump: bool,
+    pending_toggle: bool,
+    pending_hook_press: bool,
+    pending_hook_release: bool,
+    /// E held (the grapple's hold level).
+    hook_held: bool,
+    /// The session's camera law is fly (--fly): held rigs hand
+    /// the camera back to the fly cam instead of the player.
+    fly_mode: bool,
+
     mode: CamMode,
     fly: FlyCam,
     keys: HashSet<KeyCode>,
     grabbed: bool,
-    /// Right mouse held: the viewmodel aims. The grapple has no
-    /// state in this host yet, so launcher poses are unreachable
-    /// until one exists — the pose mapping is LowReady / Aim only.
+    /// Right mouse held: aiming. In Fly mode it aims the
+    /// viewmodel (LowReady / Aim); in Player mode it is the
+    /// controller's aim_held (and the grapple's launcher poses
+    /// arrive through the controller frame's viewmodel hint).
     aiming: bool,
     /// The viewmodel's kit. Street by default; C toggles assault.
     /// Assault carries no labels, ever (the no-label law holds at
@@ -257,6 +385,21 @@ impl App {
             carry: true,
         };
         let patrol_frame = patrol_anim.update(0.0, &warm);
+        // The player stands the operator's post. Settle one tick,
+        // then face the post's own yaw (the controller starts at
+        // yaw 0; the look tick turns the camera, the body follows
+        // when it moves or aims — the engine's law).
+        let player_world = player_world();
+        let mut player = PlayerController::new(POST);
+        player.set_ground_fn(Some(player_ground));
+        player.tick(&PlayerInput::default(), &player_world);
+        let player_frame = player.tick(
+            &PlayerInput {
+                look_delta: Vec2::new(POST_YAW_DEG.to_radians(), 0.0),
+                ..PlayerInput::default()
+            },
+            &player_world,
+        );
         App {
             window: None,
             surface: None,
@@ -279,7 +422,21 @@ impl App {
             weather_start_day_frac,
             base_fog_density,
             last_mesh: None,
-            mode: CamMode::Bookmark(hero_pose()),
+            player,
+            player_world,
+            player_frame: Some(player_frame),
+            pending_look: Vec2::ZERO,
+            pending_jump: false,
+            pending_toggle: false,
+            pending_hook_press: false,
+            pending_hook_release: false,
+            hook_held: false,
+            fly_mode: params.fly,
+            mode: if params.fly || params.proof {
+                CamMode::Bookmark(hero_pose())
+            } else {
+                CamMode::Player
+            },
             fly: FlyCam::from_pose(&hero_pose()),
             keys: HashSet::new(),
             grabbed: false,
@@ -310,6 +467,18 @@ impl App {
 
     fn current_pose(&self) -> CameraPose {
         match &self.mode {
+            CamMode::Player => match self.player_frame {
+                // The engine rig's own camera. CameraPose carries
+                // no roll, so the rig's wall-run / swing roll (in
+                // CameraState) is not rendered — the scene seam's
+                // limit, the same for every host.
+                Some(f) => f.camera.pose(),
+                None => CameraPose {
+                    eye: POST + Vec3::new(0.0, VIEWMODEL_EYE_Y, 0.0),
+                    target: POST + Vec3::new(0.0, VIEWMODEL_EYE_Y, -10.0),
+                    fov_y_deg: 55.0,
+                },
+            },
             CamMode::Fly => self.fly.pose(),
             CamMode::Bookmark(p) => *p,
             CamMode::Drive => match &self.drive {
@@ -319,12 +488,30 @@ impl App {
         }
     }
 
-    /// Fly input takes the camera: a held rig seeds the fly cam.
+    /// Input takes the camera back from a held rig: to the fly
+    /// cam in a --fly session (seeded from the rig, as always),
+    /// to the player in a player session.
     fn touch(&mut self) {
         if matches!(self.mode, CamMode::Bookmark(_)) {
-            self.fly = FlyCam::from_pose(&self.current_pose());
-            self.mode = CamMode::Fly;
+            if self.fly_mode {
+                self.fly = FlyCam::from_pose(&self.current_pose());
+                self.mode = CamMode::Fly;
+            } else {
+                self.mode = CamMode::Player;
+            }
         }
+    }
+
+    /// Drop queued player edges and the grapple hold: called
+    /// when the camera leaves the player (F1 / F2 / a crossing),
+    /// so a stale press can never fire on return.
+    fn clear_player_edges(&mut self) {
+        self.pending_look = Vec2::ZERO;
+        self.pending_jump = false;
+        self.pending_toggle = false;
+        self.pending_hook_press = false;
+        self.pending_hook_release = false;
+        self.hook_held = false;
     }
 
     fn grab(&mut self, on: bool) {
@@ -365,6 +552,7 @@ impl App {
             return;
         }
         println!("[drive] {which} crossing — live, follow camera");
+        self.clear_player_edges();
         self.drive = Some(DriveRun::new(which));
         self.mode = CamMode::Drive;
     }
@@ -402,6 +590,61 @@ impl App {
         }
     }
 
+    /// One host step of the player: the engine core ticks at
+    /// 240 Hz, the host at 60 Hz, so one host step is FOUR
+    /// controller ticks. Held state (wish, tier, aim, the
+    /// grapple's hold) is constant across the four; the step's
+    /// accumulated look travel is split evenly across them;
+    /// edges (jump, grapple press / release, rig toggle) fire
+    /// on the FIRST tick only — the engine consumes an edge
+    /// once, and the host never repeats it. Nothing here
+    /// re-decides movement: the wish is camera-space, the tier
+    /// is the engine's own SpeedTier, and every number that
+    /// moves the body is the controller's.
+    fn step_player(&mut self) {
+        let key = |c: KeyCode| self.keys.contains(&c);
+        let wish = Vec2::new(
+            if key(KeyCode::KeyD) { 1.0 } else { 0.0 } - if key(KeyCode::KeyA) { 1.0 } else { 0.0 },
+            if key(KeyCode::KeyW) { 1.0 } else { 0.0 } - if key(KeyCode::KeyS) { 1.0 } else { 0.0 },
+        );
+        // The gears: crouch under Ctrl, walk while aiming, sprint
+        // under Shift, run otherwise — the engine's gait table.
+        let speed = if key(KeyCode::ControlLeft) || key(KeyCode::ControlRight) {
+            SpeedTier::Crouch
+        } else if self.aiming {
+            SpeedTier::Walk
+        } else if key(KeyCode::ShiftLeft) || key(KeyCode::ShiftRight) {
+            SpeedTier::Sprint
+        } else {
+            SpeedTier::Run
+        };
+        let look_step = std::mem::take(&mut self.pending_look) / 4.0;
+        let jump = std::mem::take(&mut self.pending_jump);
+        let toggle = std::mem::take(&mut self.pending_toggle);
+        let hook_press = std::mem::take(&mut self.pending_hook_press);
+        let hook_release = std::mem::take(&mut self.pending_hook_release);
+        let hook_held = self.hook_held;
+        for sub in 0..4 {
+            let first = sub == 0;
+            let input = PlayerInput {
+                wish,
+                look_delta: look_step,
+                speed,
+                jump: jump && first,
+                hook_press: hook_press && first,
+                hook_held,
+                hook_release: hook_release && first,
+                aim_held: self.aiming,
+                // Lean is unbound in this host: the design note
+                // fixes E as grapple and leaves the lean pair to
+                // Chase's ruling, so no key is invented here.
+                lean: 0.0,
+                toggle_mode: toggle && first,
+            };
+            self.player_frame = Some(self.player.tick(&input, &self.player_world));
+        }
+    }
+
     /// One fixed simulation step: the patrol always; the crossing
     /// while one runs. The light read is logged exactly as the
     /// headless drive logs it — same field, same columns.
@@ -429,6 +672,12 @@ impl App {
         self.patrol_frame = self.patrol_anim.update(STEP, &p_input);
         if self.patrol_ctrl.agent().done {
             self.patrol_ctrl = Controller::new(Vec2::new(-8.6, -40.0), patrol_legs());
+        }
+        // The player's step (only while the player holds the
+        // camera — a held rig, the fly cam, or a crossing leaves
+        // the body where it stands).
+        if matches!(self.mode, CamMode::Player) {
+            self.step_player();
         }
         let Some(d) = &mut self.drive else { return };
         let input = d.ctrl.update(STEP);
@@ -511,6 +760,32 @@ impl App {
         }
     }
 
+    /// The player's first-person figure, from the controller
+    /// frame: the viewmodel in the pose the frame hints (LowReady
+    /// / Aim / the grapple's LauncherRaise / LauncherSwing),
+    /// placed by the engine's contract — spot = camera XZ,
+    /// ground = camera height − VIEWMODEL_EYE_Y, yaw = the rig's
+    /// camera yaw — plus body awareness when the frame says the
+    /// pitch earns it. The kit is the host's C toggle, as in fly
+    /// mode. Third person never calls this: the full figure,
+    /// posed by the frame, is the presentation there.
+    fn build_player_viewmodel(&self, frame: &ControllerFrame) -> OperatorMesh {
+        let cam = frame.camera.position;
+        let spot = Vec3::new(cam.x, 0.0, cam.z);
+        let ground_y = cam.y - VIEWMODEL_EYE_Y;
+        let yaw_deg = frame.camera.yaw.to_degrees();
+        let pose = frame
+            .viewmodel_pose
+            .unwrap_or(if self.aiming { ViewmodelPose::Aim } else { ViewmodelPose::LowReady });
+        let vm = build_viewmodel(self.vm_config, pose, spot, ground_y, yaw_deg);
+        if frame.body_awareness {
+            let body = build_body_awareness(spot, ground_y, yaw_deg);
+            merge_meshes(&vm, &body)
+        } else {
+            vm
+        }
+    }
+
     /// Both men, posed and merged through the engine's character
     /// slot — the headless host's construction, unchanged — plus
     /// the first-person figure when the fly camera carries one.
@@ -531,6 +806,23 @@ impl App {
                     d.anim.ground_y(),
                     a.yaw.to_degrees(),
                 )
+            }
+            None if matches!(self.mode, CamMode::Player) => {
+                // The player IS the operator — no post figure.
+                // Third person: the full figure, posed by the
+                // controller frame, planted at the simulated
+                // feet. First person: the viewmodel (+ body
+                // awareness) only.
+                let frame = self.player_frame.expect("player frame from App::new");
+                match frame.mode {
+                    ViewMode::ThirdPerson => c35::operator::build_operator_frame(
+                        &frame.figure_pose,
+                        frame.feet,
+                        frame.feet.y,
+                        frame.body_yaw.to_degrees(),
+                    ),
+                    ViewMode::FirstPerson => self.build_player_viewmodel(&frame),
+                }
             }
             None => op_mesh(&PoseFrame::from_pose(c35::OperatorPose::StandReady), POST, POST_YAW_DEG),
         };
@@ -875,7 +1167,11 @@ impl ApplicationHandler for App {
             self.base_fog_density,
             self.weather.fog_add()
         );
-        println!("controls         : click = mouse capture · WASD/QE fly · Shift = speed · Esc = release · F1/F2 = hero/echo rigs · F3/F4 = open/shadow crossing · P = still · right mouse = aim · C = street/assault viewmodel");
+        if self.fly_mode || !matches!(self.proof, ProofStage::Off) {
+            println!("controls         : click = mouse capture · WASD/QE fly · Shift = speed · Esc = release · F1/F2 = hero/echo rigs · F3/F4 = open/shadow crossing · P = still · right mouse = aim · C = street/assault viewmodel");
+        } else {
+            println!("controls         : click = mouse capture · WASD = move (Run) · mouse = look · right mouse = aim (Walk) · Shift = sprint · Ctrl = crouch · Space = jump · E = grapple (press/hold/release) · V = first/third rig · Esc = release · F1/F2 = hero/echo rigs · F3/F4 = open/shadow crossing · P = still · C = street/assault viewmodel");
+        }
         self.start = Instant::now();
         self.last_frame = Instant::now();
     }
@@ -913,6 +1209,39 @@ impl ApplicationHandler for App {
                     }
                     return;
                 }
+                // Player edges, while the player holds the camera.
+                // E is the grapple (press / hold / release are the
+                // controller's edges, queued for the next step);
+                // V queues the rig toggle; Space the jump. These
+                // keys never reach the fly key set in this mode.
+                if matches!(self.mode, CamMode::Player) {
+                    match code {
+                        KeyCode::KeyE => {
+                            match state {
+                                ElementState::Pressed => {
+                                    if !repeat {
+                                        self.pending_hook_press = true;
+                                    }
+                                    self.hook_held = true;
+                                }
+                                ElementState::Released => {
+                                    self.hook_held = false;
+                                    self.pending_hook_release = true;
+                                }
+                            }
+                            return;
+                        }
+                        KeyCode::KeyV if state == ElementState::Pressed && !repeat => {
+                            self.pending_toggle = true;
+                            return;
+                        }
+                        KeyCode::Space if state == ElementState::Pressed && !repeat => {
+                            self.pending_jump = true;
+                            return;
+                        }
+                        _ => {}
+                    }
+                }
                 if state == ElementState::Pressed {
                     // Governor pins (not camera input).
                     let pin = match code {
@@ -937,6 +1266,7 @@ impl ApplicationHandler for App {
                     match code {
                         KeyCode::F1 => {
                             if !matches!(self.mode, CamMode::Drive) {
+                                self.clear_player_edges();
                                 self.mode = CamMode::Bookmark(hero_pose());
                                 println!("[camera] F1 — hero-street rig");
                             }
@@ -944,6 +1274,7 @@ impl ApplicationHandler for App {
                         }
                         KeyCode::F2 => {
                             if !matches!(self.mode, CamMode::Drive) {
+                                self.clear_player_edges();
                                 self.mode = CamMode::Bookmark(echo_pose());
                                 println!("[camera] F2 — patrol-echo rig");
                             }
@@ -995,8 +1326,23 @@ impl ApplicationHandler for App {
         if let DeviceEvent::MouseMotion { delta: (dx, dy) } = event {
             if self.grabbed && !matches!(self.mode, CamMode::Drive) {
                 self.touch();
-                self.fly.yaw -= dx as f32 * 0.0021;
-                self.fly.pitch = (self.fly.pitch - dy as f32 * 0.0021).clamp(-1.45, 1.45);
+                match self.mode {
+                    // Player look accumulates for the next fixed
+                    // step (same 0.0021 rad/count as the fly cam;
+                    // signs follow the controller's yaw / pitch
+                    // convention: right turn = yaw down toward
+                    // screen-right, mouse up = pitch up).
+                    CamMode::Player => {
+                        self.pending_look +=
+                            Vec2::new(-dx as f32 * 0.0021, -dy as f32 * 0.0021);
+                    }
+                    CamMode::Fly => {
+                        self.fly.yaw -= dx as f32 * 0.0021;
+                        self.fly.pitch =
+                            (self.fly.pitch - dy as f32 * 0.0021).clamp(-1.45, 1.45);
+                    }
+                    _ => {}
+                }
             }
         }
     }

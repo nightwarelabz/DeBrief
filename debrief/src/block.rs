@@ -251,14 +251,29 @@ pub struct Block {
     pub census: String,
 }
 
-/// Lamp plan (PREP §2): west row of ten + two east exceptions.
+/// Lamp plan (PREP §2): west row of twenty-two + two east
+/// exceptions — 24 in all, exactly the engine's lamp-set cap.
+/// Graphics Push 1 raised the renderer's set 12 → 24 (the props
+/// shader's LampSet array), and this plan now fills it: no slot
+/// sits dark and none is truncated by set_lamp_set. The west
+/// pitch tightened 9 m → 4 m to do it — a lamp per bay along
+/// the tenement row, the pools overlapping into the one lit
+/// spine the header describes. The two east exceptions stand
+/// exactly where they always stood (z = ∓20), and the shadow
+/// route is untouched by the denser row by construction: at
+/// x = 8.9 the west heads (x = −4.4) are 13.3 m away, beyond
+/// FIELD_RADIUS, so the route still reads only its two honest
+/// east blips. (The four cross spans moved with the pitch —
+/// each still runs pole to warehouse wall, at the lamp
+/// positions nearest its old stand: −32, −4, 12, 32; the
+/// street banner rides the −4 span now.)
 fn lamp_plan() -> (Vec<Lamp>, Vec<(Vec3, Vec3)>) {
     // (pole base position, head position)
     let mut plan: Vec<(Vec3, Vec3)> = Vec::new();
-    let mut zi = -40.5f32;
-    while zi <= 40.5 {
+    let mut zi = -42.0f32;
+    while zi <= 42.0 {
         plan.push((Vec3::new(-7.55, 0.0, zi), Vec3::new(-4.4, LAMP_HEAD_Y, zi)));
-        zi += 9.0;
+        zi += 4.0;
     }
     plan.push((Vec3::new(7.55, 0.0, -20.0), Vec3::new(4.4, LAMP_HEAD_Y, -20.0)));
     plan.push((Vec3::new(7.55, 0.0, 20.0), Vec3::new(4.4, LAMP_HEAD_Y, 20.0)));
@@ -556,26 +571,26 @@ pub fn build_block() -> Block {
     for w in west_z.windows(2) {
         b.wire(Vec3::new(-7.55, 5.92, w[0]), Vec3::new(-7.55, 5.92, w[1]), 0.55);
     }
-    for &zc in &[-31.5f32, -4.5, 13.5, 31.5] {
+    for &zc in &[-32.0f32, -4.0, 12.0, 32.0] {
         b.wire(Vec3::new(-7.55, 5.95, zc), Vec3::new(10.4, 7.6, zc), 0.85);
     }
-    // The street banner hung from the z = -4.5 span, its top edge
+    // The street banner hung from the z = -4 span, its top edge
     // following the wire's sag (wire y at the banner's ends ~5.83
     // and ~6.04; short hanger straps close the gap).
     {
         b.quad(
             [
-                Vec3::new(0.3, 2.8, -4.5),
-                Vec3::new(2.5, 3.0, -4.5),
-                Vec3::new(2.5, 5.7, -4.5),
-                Vec3::new(0.3, 5.5, -4.5),
+                Vec3::new(0.3, 2.8, -4.0),
+                Vec3::new(2.5, 3.0, -4.0),
+                Vec3::new(2.5, 5.7, -4.0),
+                Vec3::new(0.3, 5.5, -4.0),
             ],
             Vec3::Z,
             city::BANNER,
             MAT_STANDARD,
         );
-        b.wire(Vec3::new(0.3, 5.83, -4.5), Vec3::new(0.3, 5.5, -4.5), 0.0);
-        b.wire(Vec3::new(2.5, 6.04, -4.5), Vec3::new(2.5, 5.7, -4.5), 0.0);
+        b.wire(Vec3::new(0.3, 5.83, -4.0), Vec3::new(0.3, 5.5, -4.0), 0.0);
+        b.wire(Vec3::new(2.5, 6.04, -4.0), Vec3::new(2.5, 5.7, -4.0), 0.0);
     }
 
     let tris = (b.i.len() / 3) as u32;
@@ -622,7 +637,7 @@ fn anchor_survey(field: &LightField, lamp_heads: &[Vec3]) -> Vec<Anchor> {
         }
     }
     // Wire runs: the four cross spans (midpoints) + along-street runs.
-    for &zc in &[-31.5f32, -4.5, 13.5, 31.5] {
+    for &zc in &[-32.0f32, -4.0, 12.0, 32.0] {
         v.push(Anchor {
             pos: Vec3::new(1.4, 6.6, zc),
             kind: "wire run (cross span)",

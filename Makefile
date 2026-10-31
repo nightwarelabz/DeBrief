@@ -30,10 +30,10 @@ PLAT      = engine/src/platform_macos.m engine/src/audio_device_macos.c
 PLAT_LIBS = -framework Cocoa -framework AudioToolbox
 endif
 
-debrief: game/debrief.c $(CORE) $(PLAT) engine/src/engine.h engine/src/platform.h
+debrief-game: game/debrief.c $(CORE) $(PLAT) engine/src/engine.h engine/src/platform.h
 	$(CC) $(CFLAGS) -o $@ game/debrief.c $(CORE) $(PLAT) -lm $(PLAT_LIBS)
 
 clean:
-	rm -f debrief
+	rm -f debrief-game
 
 .PHONY: clean

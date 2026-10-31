@@ -1,10 +1,14 @@
 # DeBrief — FIRST PERSON
 
-Design only. No tree edits, no repo writes. Written 2026-10-30 after
-Chase's decision: DeBrief is a FIRST-PERSON game — "a fps stealth
-sim action game etc". This is decided, not a proposal. It does not
-argue for third person, and it supersedes every third-person line in
-the design bible (exact replacement wording in §5.3).
+Design only. No tree edits, no repo writes. Written 2026-10-30.
+DeBrief is a DUAL-MODE game: first person and third person on one
+movement core, free toggle, identical stealth math — and first
+person is the native, tuning mode, the graded truth the game is
+balanced from (DESIGN.md, "Standing rulings — 2026-10-30"). This
+note specifies the first-person rig. It was first written under a
+first-person-only decision made the same day; that decision was
+superseded by the dual-mode ruling, and this note now serves the
+ruling, not the earlier call (§5.3 records the wording history).
 
 Standing law this note serves, not revises: the Beauty Law, the PS1.5
 identity, zero image assets, determinism, the cost ledger, the
@@ -69,9 +73,11 @@ outside-in build order (engine, city, weathers, lighting, and so on).
 
 ### 1.3 What the player sees of the operator
 
-The operator is no longer seen whole in play. What is seen is the
-viewmodel: hands, sleeves, weapon, and device — and it must be
-right, because it is now the most-seen operator in the game.
+In first-person mode the operator is not seen whole in play.
+What is seen is the viewmodel: hands, sleeves, weapon, and
+device — and it must be right, because in the native mode it is
+the most-seen operator in the game. (Third-person mode shows the
+full figure in play, on the third-person rig — §5.1.)
 
 - **Hands and sleeves, per configuration:**
   - **Street (coat):** waxed-canvas coat sleeves, cuff and seam
@@ -112,9 +118,10 @@ right, because it is now the most-seen operator in the game.
 
 ## 2. Where the full operator figure still lives
 
-First person hides the figure in play; it does not delete him.
-The identity work moves to presentation surfaces, and each surface
-has a governing reference:
+First person hides the figure in its own mode; it does not
+delete him. Third person shows him whole in play (§5.1), and the
+identity work still lives on the presentation surfaces — each
+surface has a governing reference:
 
 - **The debrief room:** the operator sits across the desk from
   the handler, and the camera (placed, deliberate — the MGS1
@@ -155,9 +162,10 @@ has a governing reference:
 
 ## 3. Stealth readability in first person
 
-Third person showed body-vs-cover directly: the player saw his
+Third person shows body-vs-cover directly: the player sees his
 own silhouette against the lamp. First person must replace that
-read, not remove it. Every mechanism below ties to the existing
+read, not remove it. Every mechanism below is the first-person
+mode's replacement, and ties to the existing
 one-field light law and the existing perception systems — no new
 detection system is invented, and no HUD marker ever tells the
 player "you are seen" as a game icon. The world tells him, the
@@ -468,14 +476,15 @@ stomach. Rules, all enforced, none optional:
 ### 5.1 The animator pose-graph — a second rig, not a replacement
 
 - **The third-person pose-graph STAYS.** It is not deleted. It
-  poses NPCs, enemies (soldier, Hound, Weathervane, Neighbour,
-  citizens), the mechas, and every presentation surface where
-  the full figure appears (debrief room, menu, mirrors,
-  compendium-adjacent scenes, death evidence). The M7 gaits,
-  the wall-run family, and the grapple stance all remain as
-  third-person poses — the world still needs them, because the
-  world still contains the operator's body, seen by others and
-  by the camera in presentation.
+  poses the operator in third-person play, NPCs, enemies
+  (soldier, Hound, Weathervane, Neighbour, citizens), the
+  mechas, and every presentation surface where the full figure
+  appears (debrief room, menu, mirrors, compendium-adjacent
+  scenes, death evidence). The M7 gaits, the wall-run family,
+  and the grapple stance all remain as third-person poses — the
+  world still needs them, because the world still contains the
+  operator's body, seen by others, by the camera in
+  presentation, and by the player himself in third-person mode.
 - **First person needs a separate viewmodel rig.** Hands,
   sleeves, weapon, launcher, mantle hands — a rig parented to
   the camera with lag, driven by the same PoseFrame seam (joint
@@ -510,16 +519,19 @@ this section states what changes in it):
   sleeves, weapon, launcher, all at viewmodel texel density, with
   the same per-distance read rules applied at arm's length
   (seams, stitching, wear, and the face-inward watch must read
-  in the frame); and (b) the PRESENTATION figure at conversation
-  distance (debrief room, menu) — the full-body fidelity work
-  lands there, judged at 2 m, not at patrol distance.
-- **What is retired:** the 20 m / 10 m / 5 m silhouette-read
-  requirements for the PLAYER's figure in play — the player no
-  longer sees himself at those distances, so proving his
-  silhouette there proves nothing. Those requirements TRANSFER
-  to the NPCs and enemies (a soldier's silhouette at 20 m must
-  still read his kit — that was always the perception law's
-  demand, and it is now the only place it applies to figures).
+  in the frame); and (b) the full figure at the distances it is
+  actually seen — the third-person boom in play, and the
+  PRESENTATION figure at conversation distance (debrief room,
+  menu) — judged at those distances, not at patrol distance.
+- **What is retired (first-person mode only):** the 20 m / 10 m /
+  5 m silhouette-read requirements for the PLAYER's figure — in
+  first person the player does not see himself at those
+  distances, so proving his silhouette there proves nothing in
+  that mode. In third-person mode his figure is on screen and
+  the reads apply to him as to any figure. Either way the
+  requirements TRANSFER to the NPCs and enemies (a soldier's
+  silhouette at 20 m must still read his kit — that was always
+  the perception law's demand).
 - **The face question is settled by the perspective, not by a
   ruling:** the painted-quad face problem (§5 of the beauty
   pass) stops being a gameplay problem — the player never sees
@@ -531,47 +543,47 @@ this section states what changes in it):
   field figure reads as its CONFIGURATION, and the identity
   portrait governs the menu. No further ruling is needed on
   that question for the FP build — unless Chase reopens it.
-- **The per-distance rules, restated for FP:** at arm's length
-  (viewmodel) the kit must read; at conversation distance
-  (debrief room) the face and the configuration must read; at
-  patrol distance (NPCs) the silhouette must read. A figure
-  that only reads at one distance has failed — the rule
-  survives, the distances move.
+- **The per-distance rules, restated:** at arm's length
+  (viewmodel, first person) the kit must read; at boom distance
+  (third-person play) the figure and its configuration must
+  read; at conversation distance (debrief room) the face and the
+  configuration must read; at patrol distance (NPCs) the
+  silhouette must read. A figure that only reads at one distance
+  has failed — the rule survives, the distances move.
 
-### 5.3 The exact DESIGN.md wording change
+### 5.3 The DESIGN.md wording — superseded, and the current state
 
-DESIGN.md currently says third-person in two places. Both change:
+This note originally prescribed first-person-only wording for two
+places in DESIGN.md. That prescription is SUPERSEDED by the
+standing ruling (DESIGN.md, "Standing rulings — 2026-10-30"):
+first person native, third person fully supported, one movement
+core, identical stealth math. The current state of the two places:
 
-**Old (header block):**
-> Repo: `nightwarelabz/DeBrief` · Engine: C35 (Comigen), PlayStation 1.5 presentation ·
-> Perspective: third-person shooter · Genre: immersive simulator
+- **Header block:** reads "Perspective: first person native,
+  third person fully supported (dual-mode)" — the ruling's
+  wording. The first-person-only line this note first drafted
+  for it ("Perspective: first-person · Genre: FPS stealth sim
+  action game") was never the bible's settled text.
+- **§8, Presentation:** carried the pre-ruling sentence —
+  "Third-person camera with a law: free and low over the shoulder
+  in open ground; in interiors, the camera takes composed,
+  deliberate angles — the MGS1 lesson that a *placed* camera is
+  atmosphere." Against the ruling it was incomplete: it stated
+  the third-person rig's law and the interiors law, but not the
+  native first-person mode. The parent fixed §8 in the same
+  landing as this alignment — §8 now states both rigs' laws
+  under one movement core, with identical stealth math.
 
-**New (header block):**
-> Repo: `nightwarelabz/DeBrief` · Engine: C35 (Comigen), PlayStation 1.5 presentation ·
-> Perspective: first-person · Genre: FPS stealth sim action game
-
-**Old (§8, Presentation — final sentence):**
-> Third-person camera with a law: free and low over the shoulder in
-> open ground; in interiors, the camera takes composed, deliberate
-> angles — the MGS1 lesson that a *placed* camera is atmosphere.
-
-**New (§8, Presentation — final sentence):**
-> First-person camera with a law: the eye is the operator's eye —
-> head-bob subtle and never while hiding, the visor frame itself
-> carrying the light read, hands and weapon lit by the same lamp
-> field as the world; in interiors and the debrief room, the
-> camera takes composed, deliberate angles — the MGS1 lesson that
-> a *placed* camera is atmosphere — and the full figure returns
-> there, across the desk, as the man who worked the op.
-
-**Companion edit (not in DESIGN.md — for the parent to carry):**
+**Companion note (not in DESIGN.md — for the parent to carry):**
 PS15-DIRECTION.md golden (6) annotates the operator rear view with
-"the back is the most-seen angle in third person." Under first
-person that annotation is superseded: the rear view remains a
-golden standard and a presentation angle (debrief room, menu,
-mirrors), but it is no longer the most-seen gameplay angle — the
-viewmodel's hands and the visor frame are. The (6) entry itself
-(the rear-view image and its kit map) is unchanged.
+"the back is the most-seen angle in third person." Under the
+dual-mode ruling that annotation stands as written for
+third-person mode — the rear view is what the third-person player
+sees — and the rear view remains a golden standard and a
+presentation angle (debrief room, menu, mirrors). In first-person
+mode the most-seen angle is the viewmodel's hands and the visor
+frame. The (6) entry itself (the rear-view image and its kit map)
+is unchanged.
 
 **Not changed (deliberately):** the §2 Syphon Filter line
 ("Third-person run-and-gun with momentum") describes an ANCESTOR,
@@ -638,10 +650,13 @@ pose-family presentation, re-scoped in §5.1 above.
 3. **Lean bind.** Q/E is OUT — E is grapple, fixed (Chase
    2026-10-30). The mechanic is specified; the pair is Chase's
    call, and it cannot include E.
-4. **Base FOV and eye height numbers.** Both are specified as
-   rules with proofs (§1.1), not as numbers — the build crew
-   reports them from the model and the fixed-camera proofs.
-   Chase judges the frames, not the constants.
+4. **Base FOV and eye height numbers.** Specified here as rules
+   with proofs (§1.1); the numbers have since SHIPPED in the
+   dual-mode controller (C35 PR #38): first-person rig 55 base /
+   50 aim / 60 max, third-person rig 50 / 45 / 55, eye at 1.62 m
+   (DESIGN.md's standing ruling). Chase judges the frames, not
+   the constants — the registers are named constants, retuned on
+   his play feel if the frames say so.
 5. **Comfort fallback.** If playtesting shows the swing still
    sickens, the fix is a named transition's easing (§4.4) — but
    whether a comfort option (reduced swing bank, reduced FOV

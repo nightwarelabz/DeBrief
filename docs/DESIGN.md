@@ -175,9 +175,12 @@ There will be blood and giblets, at Resident Evil weight — and this is not a h
 Per the C35 direction (`~/workspace/c35-stage/PS15-DIRECTION.md`): chunky low-poly models with
 big readable silhouettes, flat facets, low-resolution generated surfaces, fog and night grades
 like the banner — cleaner than PS1 (no affine warp, no vertex wobble), short of PS2. 1987's
-city in that style: sodium light, wet concrete, watchtowers, neon through rain. Third-person
-camera with a law: free and low over the shoulder in open ground; in interiors, the camera
-takes composed, deliberate angles — the MGS1 lesson that a *placed* camera is atmosphere.
+city in that style: sodium light, wet concrete, watchtowers, neon through rain. Dual-mode
+camera with a law: first person native — the eye is the operator's eye (1.62 m, register
+55/50/60); third person free and low over the shoulder in open ground (register 50/45/55);
+in interiors, either mode takes composed, deliberate angles — the MGS1 lesson that a
+*placed* camera is atmosphere. One movement core under both rigs; the stealth math is
+identical in either mode.
 
 ## 9. Standing rulings carried into this design
 

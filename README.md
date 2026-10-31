@@ -6,6 +6,6 @@ You are an NSA special agent. Every entry in the series opens with the op and cl
 
 Made with the **CASM-PS15** — a from-scratch engine aiming at a PlayStation 1.5 look: better than PS1, not quite PS2. Low-poly, low-res, clean.
 
-Status: in development. The engine lives at [nightwarelabz/C35](https://github.com/nightwarelabz/C35).
+Status: in development. The engine lives at [nightwarelabz/CASM-PS15](https://github.com/nightwarelabz/CASM-PS15).
 
 AGPL-3.0 — see [LICENSE](LICENSE).

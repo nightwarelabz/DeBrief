@@ -50,6 +50,10 @@
 //!   --smoke <secs> run the living street for N seconds, then exit 0
 //!   --proof        F1 capture → F2 capture → both crossings live →
 //!                  exit 0 (CSVs + frames land in --out)
+//!
+//! --models <dir>   the Hotwire shelf (see shelf.rs): the folder's
+//!                  .c35m models stand on a street-side row and
+//!                  hot-swap live as the files change.
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -72,7 +76,9 @@ use winit::window::{CursorGrabMode, Window, WindowId};
 use crate::{
     block::{Block, BLOCK_HALF_Z},
     configure_scene, drive_route, echo_pose, flat_ground, follow_pose, hero_pose, merge_meshes,
-    op_mesh, patrol_legs, print_reality, soldier, Reality,
+    op_mesh, patrol_legs, print_reality,
+    shelf::Shelf,
+    soldier, Reality,
 };
 
 const STEP: f32 = 1.0 / 60.0;
@@ -269,6 +275,9 @@ pub struct Params {
     /// --fly: restore the free-fly camera as the session's law
     /// (the player controller is not driven).
     pub fly: bool,
+    /// --models <dir>: the Hotwire shelf's models folder.
+    /// None = no shelf; the session is exactly as before.
+    pub models_dir: Option<String>,
 }
 
 struct App {
@@ -305,6 +314,14 @@ struct App {
     weather_start_day_frac: f32,
     base_fog_density: f32,
     last_mesh: Option<OperatorMesh>,
+
+    // The Hotwire shelf (--models): the watched models folder
+    // and its placed models. None when the flag is absent — the
+    // session then carries no shelf state at all. The poll runs
+    // on a frame counter in draw() (~once a second at 60 fps);
+    // a changed shelf re-uploads the merged props once.
+    shelf: Option<Shelf>,
+    shelf_poll_frames: u64,
 
     // The player: the engine's dual-mode controller over its
     // own static world, stepped in step_sim. Inert unless the
@@ -422,6 +439,15 @@ impl App {
             weather_start_day_frac,
             base_fog_density,
             last_mesh: None,
+            // The shelf opens before the window exists: its load
+            // report prints with the rest of startup, and the
+            // first merged upload happens in resumed() once the
+            // scene is configured.
+            shelf: params
+                .models_dir
+                .as_deref()
+                .map(|d| Shelf::open(std::path::Path::new(d))),
+            shelf_poll_frames: 0,
             player,
             player_world,
             player_frame: Some(player_frame),
@@ -954,6 +980,22 @@ impl App {
             self.frame_ema_ms * 0.95 + dt as f64 * 1000.0 * 0.05
         };
 
+        // The Hotwire shelf's watch (house cadence: a frame
+        // counter, ~once a second at 60 fps — the host spawns no
+        // threads). Only a real change re-uploads the props.
+        if let Some(shelf) = &mut self.shelf {
+            self.shelf_poll_frames += 1;
+            if self.shelf_poll_frames >= 60 {
+                self.shelf_poll_frames = 0;
+                if shelf.poll() {
+                    let merged = shelf.merged_props(&self.blk.mesh, &self.blk.field);
+                    if let Some(renderer) = &mut self.renderer {
+                        renderer.set_props(Some(&merged));
+                    }
+                }
+            }
+        }
+
         // Free-fly movement (not while a crossing owns the camera).
         if matches!(self.mode, CamMode::Fly) {
             let speed = if self.keys.contains(&KeyCode::ShiftLeft) || self.keys.contains(&KeyCode::ShiftRight) {
@@ -1140,6 +1182,15 @@ impl ApplicationHandler for App {
         renderer.resize(self.size.0, self.size.1);
         // THE SAME scene build as the headless rig — one definition.
         configure_scene(&mut renderer, &self.blk, &self.present);
+        // The Hotwire shelf stands on the scene: re-upload the
+        // props as block + shelf (configure_scene uploaded the
+        // block alone). An empty shelf keeps the scene's upload.
+        if let Some(shelf) = &self.shelf {
+            if !shelf.is_empty() {
+                let merged = shelf.merged_props(&self.blk.mesh, &self.blk.field);
+                renderer.set_props(Some(&merged));
+            }
+        }
         self.window = Some(window);
         self.surface = Some(surface);
         self.renderer = Some(renderer);

@@ -22,12 +22,18 @@
 //!                  restores the free-fly camera; --proof /
 //!                  --smoke <secs> run it unattended)
 //!
+//! --models <dir>   the Hotwire shelf (see shelf.rs): models in
+//!                  the folder stand on a street-side row and
+//!                  hot-swap live in windowed mode; survey lists
+//!                  them. Absent = the shelf does not exist.
+//!
 //! Reality rig (same contract as the vista host — pins are read by
 //! this host only, never by the engine crate):
 //!   COMIGEN_PIN_ISO / COMIGEN_LAT / COMIGEN_LON / COMIGEN_UTC_OFFSET_MIN
 
 mod block;
 mod light;
+mod shelf;
 mod soldier;
 mod windowed;
 
@@ -363,6 +369,7 @@ fn main() {
     let width: u32 = arg_value(&args, "--width").and_then(|v| v.parse().ok()).unwrap_or(1280);
     let height: u32 = arg_value(&args, "--height").and_then(|v| v.parse().ok()).unwrap_or(720);
     let present = arg_value(&args, "--present").unwrap_or_else(|| "ps15".to_string());
+    let models_dir = arg_value(&args, "--models");
     std::fs::create_dir_all(&out_dir).expect("create out dir");
 
     let blk = block::build_block();
@@ -387,6 +394,9 @@ fn main() {
             }
             println!("{line}");
         }
+        if let Some(dir) = &models_dir {
+            shelf::print_survey(std::path::Path::new(dir));
+        }
         return;
     }
 
@@ -402,6 +412,7 @@ fn main() {
             proof: args.iter().any(|a| a == "--proof"),
             smoke_secs: arg_value(&args, "--smoke").and_then(|v| v.parse().ok()),
             fly: args.iter().any(|a| a == "--fly"),
+            models_dir: models_dir.clone(),
         };
         windowed::run(blk, &reality, params);
         return;

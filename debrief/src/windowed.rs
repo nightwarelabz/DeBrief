@@ -24,6 +24,14 @@
 //! The ledger rides the title bar: frame ms, GPU ms, draws, backend,
 //! presentation, governor state — footage carries its own proof.
 //!
+//! The sky is live too: the engine's WeatherState ticks on the
+//! same fixed step, on the reality layer's clock (seed 0xC35_0001,
+//! the engine's own), and its fog_add rides on the reality
+//! layer's fog density at bind time — the weather module's host
+//! contract, step 4. Wetness is computed every step and carried
+//! in the ledger lines; this host owns no surface records for
+//! contract step 3 to feed yet (see step_sim).
+//!
 //! Proof hooks (no interaction needed):
 //!   --smoke <secs> run the living street for N seconds, then exit 0
 //!   --proof        F1 capture → F2 capture → both crossings live →
@@ -184,6 +192,13 @@ struct App {
     acc: f32,
     sim_time: f32,
     sim_steps: u64,
+    // The weather (the engine weather module's host contract):
+    // ticked on the fixed step from the reality layer's clock;
+    // its fog_add binds onto the reality fog per frame.
+    weather: c35::weather::WeatherState,
+    weather_start_hours: f32,
+    weather_start_day_frac: f32,
+    base_fog_density: f32,
     last_mesh: Option<OperatorMesh>,
 
     mode: CamMode,
@@ -212,6 +227,20 @@ struct App {
 
 impl App {
     fn new(blk: Block, world: WorldState, params: &Params) -> App {
+        // The weather clock starts on the reality layer's own
+        // instant: hours since the epoch and the fractional
+        // day-of-year the reality layer computed (its day_of_year
+        // is (day − 1) + local day fraction, hence floor + 1 for
+        // the weather module's 1-based day). Same real instant,
+        // same sky — the weather module's determinism rule.
+        let weather_start_hours = (world.unix_seconds / 3600.0) as f32;
+        let weather_start_day_frac = world.day_of_year;
+        let weather = c35::weather::WeatherState::new(
+            0xC35_0001,
+            weather_start_hours,
+            weather_start_day_frac.floor() as u32 + 1,
+        );
+        let base_fog_density = world.fog_density;
         let patrol_ctrl = Controller::new(Vec2::new(-8.6, -40.0), patrol_legs());
         let mut patrol_anim = Animator::new();
         patrol_anim.set_ground_fn(Some(flat_ground));
@@ -244,6 +273,10 @@ impl App {
             acc: 0.0,
             sim_time: 0.0,
             sim_steps: 0,
+            weather,
+            weather_start_hours,
+            weather_start_day_frac,
+            base_fog_density,
             last_mesh: None,
             mode: CamMode::Bookmark(hero_pose()),
             fly: FlyCam::from_pose(&hero_pose()),
@@ -261,6 +294,17 @@ impl App {
             smoke_secs: params.smoke_secs,
             should_exit: false,
         }
+    }
+
+    /// The world the renderer is handed this frame: the reality
+    /// layer's state with the weather's fog added (host contract
+    /// step 4 — weather adds to the reality layer's fog density,
+    /// never replaces it; the renderer's ground-haze term then
+    /// pools the sum in the street as before).
+    fn effective_world(&self) -> WorldState {
+        let mut world = self.world;
+        world.fog_density = self.base_fog_density + self.weather.fog_add();
+        world
     }
 
     fn current_pose(&self) -> CameraPose {
@@ -363,6 +407,22 @@ impl App {
     fn step_sim(&mut self) {
         self.sim_time += STEP;
         self.sim_steps += 1;
+        // The weather ticks on the same fixed step (host
+        // contract step 1): the clock is the reality layer's —
+        // the session's start instant plus street time — and
+        // daylight/cold are the reality layer's own factors.
+        // Contract step 2 has no consumer here (no scent field
+        // in this host), and step 3's wetness is computed but
+        // has nowhere to land yet: this host builds no
+        // SurfaceRecords (no traversal courses run on them, no
+        // footstep pricing), and the renderer's wet pass takes
+        // no wetness input — it is MAT_WET + the lamp set, full
+        // strength, always. The number is carried in the ledger
+        // lines below rather than silently dropped; strikes
+        // (last_strike) likewise have no flash consumer here.
+        let w_hours = self.weather_start_hours + self.sim_time / 3600.0;
+        let w_day = (self.weather_start_day_frac + self.sim_time / 86400.0).floor() as u32 + 1;
+        self.weather.tick(STEP, w_hours, w_day, self.world.daylight, self.world.cold);
         // The patrol's step (loop restarts seamlessly, as headless).
         let p_input = self.patrol_ctrl.update(STEP);
         self.patrol_frame = self.patrol_anim.update(STEP, &p_input);
@@ -487,7 +547,7 @@ impl App {
     /// rig's format is RGBA, and the file must read the same).
     fn capture(&mut self, path: &str) {
         let pose = self.current_pose();
-        let world = self.world;
+        let world = self.effective_world();
         let t = self.sim_time;
         let (w, h) = self.size;
         let Some(renderer) = &mut self.renderer else { return };
@@ -653,7 +713,7 @@ impl App {
         }
         self.last_mesh = Some(self.build_mesh());
         let pose = self.current_pose();
-        let world = self.world;
+        let world = self.effective_world();
         let time = self.sim_time;
 
         // Phase 2 — GPU work (field borrows only; no &mut self calls).
@@ -719,12 +779,16 @@ impl App {
         if let Some(secs) = self.smoke_secs {
             if self.start.elapsed().as_secs_f32() >= secs {
                 println!(
-                    "[smoke] {:.1} s up: {} frames rendered, {} sim steps, patrol at ({:.1}, {:.1})",
+                    "[smoke] {:.1} s up: {} frames rendered, {} sim steps, patrol at ({:.1}, {:.1}), weather {:?} rain {:.2} wetness {:.2} fog_add {:.5}",
                     secs,
                     self.frame_count,
                     self.sim_steps,
                     self.patrol_ctrl.agent().pos.x,
-                    self.patrol_ctrl.agent().pos.y
+                    self.patrol_ctrl.agent().pos.y,
+                    self.weather.regime(),
+                    self.weather.rain(),
+                    self.weather.wetness(),
+                    self.weather.fog_add()
                 );
                 self.should_exit = true;
             }
@@ -800,6 +864,14 @@ impl ApplicationHandler for App {
             r.internal_size().1
         );
         println!("governor         : pinned at level 0 (proof rig law; 0-4 re-pin, ` releases to live)");
+        println!(
+            "weather          : {:?} (seed 0xC35_0001, reality clock) · rain {:.2} · wetness {:.2} · fog {:.5} reality + {:.5} weather",
+            self.weather.regime(),
+            self.weather.rain(),
+            self.weather.wetness(),
+            self.base_fog_density,
+            self.weather.fog_add()
+        );
         println!("controls         : click = mouse capture · WASD/QE fly · Shift = speed · Esc = release · F1/F2 = hero/echo rigs · F3/F4 = open/shadow crossing · P = still · right mouse = aim · C = street/assault viewmodel");
         self.start = Instant::now();
         self.last_frame = Instant::now();

@@ -1,7 +1,0 @@
-# DeBrief — the game.
-# The engine lives in nightwarelabz/C35; this repo holds the game
-# itself (debrief/), its bible (docs/), and its concept art.
-# The game depends on the engine by git, tracking C35 main.
-[workspace]
-members = ["debrief"]
-resolver = "2"

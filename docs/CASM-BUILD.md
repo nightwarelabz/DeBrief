@@ -8,8 +8,12 @@ in the build.
 
 ```sh
 make
-./debrief
+./debrief-game
 ```
+
+Upgrading a clone from before the restructure: remove the leftover
+Rust artifacts first (`rm -rf debrief target Cargo.lock`) — the old
+`debrief/` package directory otherwise shadows the build.
 
 Requirements: a C compiler and, on Linux, X11 + ALSA development
 libraries; on macOS, the system frameworks (Cocoa, AudioToolbox) only.

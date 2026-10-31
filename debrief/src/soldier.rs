@@ -46,6 +46,7 @@ fn spec(
 }
 
 /// The soldier, as geometry: ~90 parts on the shared skeleton.
+#[allow(clippy::vec_init_then_push)]
 pub fn soldier_parts() -> Vec<PartSpec> {
     use region::*;
     use Bone::*;

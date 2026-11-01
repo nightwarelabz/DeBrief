@@ -8,16 +8,22 @@ CORE     = engine/src/raster.c engine/src/render.c engine/src/texgen.c \
            engine/src/physics.c engine/src/audio.c engine/src/percept.c \
            engine/src/persist.c engine/src/greyport.c
 
+# The fill kernels use C-preprocessor macros (SYM), so they must be
+# assembled as their own translation units with -x assembler-with-cpp —
+# feeding the .s/.S straight into the link line hands it to the assembler
+# unpreprocessed and every SYM() line fails. Same shape as CASM-PS15's
+# own Makefile pattern rules.
+ASM_OBJ  =
 ifeq ($(ARCH),x86_64)
-CORE    += engine/src/fill_x86_64.s
+ASM_OBJ  = engine/src/fill_x86_64.o
 CFLAGS  += -DCASM_HAVE_ASM_FILL=1
 endif
 ifeq ($(ARCH),arm64)
-CORE    += engine/src/fill_arm64.S
+ASM_OBJ  = engine/src/fill_arm64.o
 CFLAGS  += -DCASM_HAVE_ASM_FILL=1
 endif
 ifeq ($(ARCH),aarch64)
-CORE    += engine/src/fill_arm64.S
+ASM_OBJ  = engine/src/fill_arm64.o
 CFLAGS  += -DCASM_HAVE_ASM_FILL=1
 endif
 
@@ -34,10 +40,16 @@ HEADERS = engine/src/engine.h engine/src/greyport.h engine/src/platform.h game/d
 
 all: debrief-game
 
-debrief-game: game/debrief.c $(CORE) $(PLAT) $(HEADERS)
-	$(CC) $(CFLAGS) -o $@ game/debrief.c $(CORE) $(PLAT) -lm $(PLAT_LIBS)
+debrief-game: game/debrief.c $(CORE) $(PLAT) $(ASM_OBJ) $(HEADERS)
+	$(CC) $(CFLAGS) -o $@ game/debrief.c $(CORE) $(PLAT) $(ASM_OBJ) -lm $(PLAT_LIBS)
+
+engine/src/fill_x86_64.o: engine/src/fill_x86_64.s
+	$(CC) $(CFLAGS) -x assembler-with-cpp -c $< -o $@
+
+engine/src/fill_arm64.o: engine/src/fill_arm64.S
+	$(CC) $(CFLAGS) -x assembler-with-cpp -c $< -o $@
 
 clean:
-	rm -f debrief-game debrief_save.dat
+	rm -f debrief-game debrief_save.dat $(ASM_OBJ)
 
 .PHONY: all clean

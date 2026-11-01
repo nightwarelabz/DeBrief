@@ -4,7 +4,7 @@
 
 You are an NSA special agent. Every entry in the series opens with the op and closes with the debriefing.
 
-Made with the **CASM-PS15** — a from-scratch engine aiming at a PlayStation 1.5 look: better than PS1, not quite PS2. Low-poly, low-res, clean.
+Made with the **CASM-P15 engine** — a from-scratch engine aiming at a PlayStation 1.5 look: better than PS1, not quite PS2. Low-poly, low-res, clean.
 
 Status: in development. The engine lives at [nightwarelabz/CASM-PS15](https://github.com/nightwarelabz/CASM-PS15).
 

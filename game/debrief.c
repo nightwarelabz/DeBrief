@@ -1,14 +1,15 @@
-/* DeBrief: A City of Spies — Playable Third-Person Espionage Action Game
+/* DeBrief: A City of Spies — Playable First-Person Stealth Immersive Sim
  * Built on the zero-dependency CASM-PS15 C11 + SIMD Assembly Engine.
  *
- * Visual Doctrine: PlayStation 1.5 cold-war nocturne faithful to the Operator
- * banner portrait (pixel-camo hood, exposed sunlit/sodium brow, ruby mosaic
- * visor + LED, gold NSA crest, twin unequal radio whips, brushed gunmetal USP,
- * flooded harbor canal planar reflections, and Sony Trinitron scanlines).
+ * Visual Doctrine: PlayStation 1.5 cold-war nocturne — sodium pools on wet
+ * stone, flooded harbor canal planar reflections, Sony Trinitron scanlines,
+ * and the diegetic amber visor HUD: in first person the visor is the frame
+ * you see the world through, and your viewmodel sleeves, suppressed USP and
+ * grapple launcher are lit by the same light field that exposes you.
  *
- * Gameplay Doctrine: 100% modern third-person stealth-action systems:
- *   - Seamless live-3D Title Banner -> Over-the-Shoulder camera handoff
- *   - WASD + Mouse 360 camera-relative movement, RMB tight right-shoulder ADS
+ * Gameplay Doctrine: 100% modern first-person stealth systems:
+ *   - Seamless live-3D Title Banner -> eye-level camera handoff
+ *   - WASD + Mouse 360 camera-relative movement, RMB precision aim (tight FOV)
  *   - LMB suppressed HK USP (headshots, shootable sodium lamps, wall-ping
  *     acoustic lures, Patrol Mecha SENSOR / ACTUATOR / COOLANT surgery)
  *   - E physical raycast-anything grapple (hold C/Ctrl to lock rope length & swing)
@@ -49,14 +50,6 @@ static double now_s(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return ts.tv_sec + ts.tv_nsec / 1e9;
-}
-
-static float turn_toward(float cur, float target, float max_step) {
-    float d = target - cur;
-    while (d >  PS15_PI) d -= 2.0f * PS15_PI;
-    while (d < -PS15_PI) d += 2.0f * PS15_PI;
-    if (fabsf(d) <= max_step) return target;
-    return cur + (d > 0.0f ? max_step : -max_step);
 }
 
 static uint32_t present_buf[960 * 540];
@@ -110,6 +103,18 @@ static void draw_ping_ring(FB *fb, const Camera *cam, V3 center, float radius, u
     }
 }
 
+/* Camera basis for placing first-person effects (the grapple rope's
+ * launcher muzzle) in world space off the eye camera. The viewmodel itself
+ * is the engine's: viewmodel_new() + render_viewmodel_ex(), which draws the
+ * sleeves/gloves/USP in view space lit by a probe of this scene's own light
+ * field. */
+static void vm_basis(const Camera *cam, V3 *fwd, V3 *right, V3 *up) {
+    float cp = cosf(cam->pitch);
+    *fwd   = v3(sinf(cam->yaw) * cp, sinf(cam->pitch), cosf(cam->yaw) * cp);
+    *right = v3(cosf(cam->yaw), 0.0f, -sinf(cam->yaw));
+    *up    = v3_cross(*fwd, *right);
+}
+
 static const char *compute_grade(int alarms, int takedowns, int shots_fired, bool mecha_down) {
     if (alarms == 0 && takedowns == 0 && !mecha_down && shots_fired == 0)
         return "GHOST-THAT-NEVER-WAS";
@@ -150,8 +155,8 @@ int main(int argc, char **argv) {
     GreyportScene sc;
     greyport_init(&sc);
     FB *fb = fb_new(FB_W, FB_H);
-    Humanoid oper    = humanoid_new();
     Humanoid soldier = humanoid_guard_new();
+    Viewmodel vm     = viewmodel_new();
     MechaMesh mmesh  = mecha_mesh_new();
 
     Plat *plat = plat_open("DeBrief — A City of Spies", 960, 540);
@@ -179,12 +184,11 @@ int main(int argc, char **argv) {
     bool title_active = !skip_title;
     float title_blend = skip_title ? 0.0f : 1.0f;
     float cam_yaw = -0.06f, cam_pitch = 0.02f;
-    float char_yaw = skip_title ? 0.20f : 3.32f;
-    Camera cam = tps_camera_step((Camera){ player.pos, cam_yaw, cam_pitch },
-                                 &player, cam_yaw, cam_pitch, false, false,
-                                 sc.world, sc.nworld, 1.0f);
+    float bob_ph = 0.0f;
+    Camera cam = { v3(player.pos.x, player.pos.y + 1.62f, player.pos.z),
+                   cam_yaw, cam_pitch };
 
-    int showcase_front = 0, show_tech = 0, show_dossier = 0;
+    int show_tech = 0, show_dossier = 0;
     int ammo = 12, shots_fired = 0, takedowns = 0, alarms = 0, grapples = 0;
     bool crouched = false, alarmed = false, grapple_latch_guard = false;
     bool disguised = false, mecha_scanned = false, extracted = false;
@@ -234,7 +238,6 @@ int main(int argc, char **argv) {
             if (in.keys & K_LOOK_U) cam_pitch  = clampf(cam_pitch + (float)ft * 1.5f, -1.18f, 1.15f);
             if (in.keys & K_LOOK_D) cam_pitch  = clampf(cam_pitch - (float)ft * 1.5f, -1.18f, 1.15f);
 
-            if (in.pressed & K_TOGGLE_VIEW) showcase_front = !showcase_front;
             if (in.pressed & K_DOSSIER)     show_dossier = !show_dossier;
             if (in.pressed & K_JUMP)        jump_buf_t = 0.14f;
         }
@@ -269,7 +272,6 @@ int main(int argc, char **argv) {
                 if (pops[i].timer > 0.0f) pops[i].timer = fmaxf(0.0f, pops[i].timer - DT);
 
             if (title_active) {
-                char_yaw = 3.32f;
                 /* Subtle patrol life in the background harbor while on Title Banner */
                 guard_update_ex(&guards[0], GUARD0_WP, 4, v3(0, -50, 0), 0.0f, 0.0f, sc.world, sc.nworld, DT * 0.4f);
                 mecha_update(&walker, MECHA_WP, 4, v3(0, -50, 0), 0.0f, 0.0f, sc.world, sc.nworld, DT * 0.35f);
@@ -291,7 +293,7 @@ int main(int argc, char **argv) {
             float cur_hspd = hypotf(player.vel.x, player.vel.z);
             if ((in.pressed & K_CROUCH) && player.grounded && cur_hspd > 4.6f && slide_timer <= 0.0f) {
                 slide_timer = 0.52f;
-                slide_dir = moving ? wish : v3(sinf(char_yaw), 0.0f, cosf(char_yaw));
+                slide_dir = moving ? wish : v3(sinf(cam_yaw), 0.0f, cosf(cam_yaw));
                 crouched = true;
                 player.height = 1.15f;
                 au_live_footstep(&live, 1);
@@ -322,13 +324,6 @@ int main(int argc, char **argv) {
                 player.vel.z += wish.z * 7.8f * DT;
             }
 
-            if (aiming || recoil > 0.05f)
-                char_yaw = turn_toward(char_yaw, cam_yaw, 18.0f * DT);
-            else if (slide_timer > 0.0f)
-                char_yaw = turn_toward(char_yaw, atan2f(slide_dir.x, slide_dir.z), 14.0f * DT);
-            else if (moving)
-                char_yaw = turn_toward(char_yaw, atan2f(wish.x, wish.z), 12.5f * DT);
-
             /* Coyote jump + Jump buffer + Wall-jump */
             if (player.grounded) coyote_t = 0.12f;
             else                 coyote_t = fmaxf(0.0f, coyote_t - DT);
@@ -349,13 +344,15 @@ int main(int argc, char **argv) {
                 }
             }
 
+            /* The eye: every first-person system this tick reads from here. */
+            V3 eye = v3(player.pos.x, player.pos.y + player.height * 0.9f, player.pos.z);
+
             /* Physical Raycast-Anything Grapple (Crouch holds rope length for pure pendulum!) */
             if (!(in.keys & K_GRAPPLE)) grapple_latch_guard = false;
             if ((in.keys & K_GRAPPLE) && !player.grappling && !grapple_latch_guard) {
                 V3 aim_dir = v3(sinf(cam_yaw) * cosf(cam_pitch), sinf(cam_pitch),
                                 cosf(cam_yaw) * cosf(cam_pitch));
-                V3 launch_eye = v3(player.pos.x, player.pos.y + 1.52f, player.pos.z);
-                if (grapple_fire_ray(&player, launch_eye, aim_dir,
+                if (grapple_fire_ray(&player, eye, aim_dir,
                                      sc.world, sc.nworld, sc.anchors, sc.nanchors, 32.0f)) {
                     au_live_grapple(&live);
                     grapples++;
@@ -375,18 +372,17 @@ int main(int argc, char **argv) {
                     shots_fired++;
                     fire_cd = 0.17f;
                     recoil = 1.0f;
-                    char_yaw = cam_yaw;
                     disguised = false;
                     au_live_pistol(&live);
-                    sc.muzzle_pos = v3(player.pos.x + sinf(char_yaw) * 0.55f,
-                                       player.pos.y + (crouched ? 1.05f : 1.42f),
-                                       player.pos.z + cosf(char_yaw) * 0.55f);
+                    V3 rdir = v3(sinf(cam_yaw) * cosf(cam_pitch), sinf(cam_pitch),
+                                 cosf(cam_yaw) * cosf(cam_pitch));
+                    V3 rgt = v3(cosf(cam_yaw), 0.0f, -sinf(cam_yaw));
+                    sc.muzzle_pos = v3_add(eye, v3_add(v3_scale(rdir, 0.72f),
+                                           v3_add(v3_scale(rgt, 0.14f), v3(0.0f, -0.12f, 0.0f))));
                     sc.muzzle_flash = 1.0f;
                     noise = fmaxf(noise, 0.45f);
 
-                    V3 rdir = v3_norm(v3(sinf(cam.yaw) * cosf(cam.pitch), sinf(cam.pitch),
-                                         cosf(cam.yaw) * cosf(cam.pitch)));
-                    V3 rorig = v3_add(cam.pos, v3_scale(rdir, 1.15f));
+                    V3 rorig = v3_add(eye, v3_scale(rdir, 0.25f));
                     V3 hit_pt;
                     int hk = greyport_fire_ray_ex(&sc, rorig, rdir, guards, 2, &walker, &hit_pt);
                     if (hk == GP_HIT_WALL) {
@@ -530,6 +526,7 @@ int main(int argc, char **argv) {
             physics_step(&player, sc.world, sc.nworld, DT);
 
             float moved = v3_len(v3_sub(player.pos, prev));
+            if (player.grounded) bob_ph += moved * 2.4f;
             if ((player.grounded || wall_running) && moving && slide_timer <= 0.0f) {
                 step_acc += moved;
                 if (step_acc > (crouched ? 2.2f : 1.80f)) {
@@ -570,32 +567,32 @@ int main(int argc, char **argv) {
             }
             if (max_al < 0.30f) alarmed = false;
 
-            if (showcase_front) {
-                V3 front_pos = v3(player.pos.x + sinf(char_yaw) * 1.65f,
-                                  player.pos.y + 1.32f,
-                                  player.pos.z + cosf(char_yaw) * 1.65f);
-                cam.pos = camera_resolve(front_pos, sc.world, sc.nworld, 0.25f);
-                cam.yaw = char_yaw + PS15_PI;
-                cam.pitch = -0.04f;
-            } else {
-                cam = tps_camera_step(cam, &player, cam_yaw, cam_pitch,
-                                      crouched, aiming, sc.world, sc.nworld, DT);
-            }
+            cam.pos = v3(player.pos.x, player.pos.y + player.height * 0.9f, player.pos.z);
+            cam.yaw = cam_yaw;
+            cam.pitch = cam_pitch;
         }
 
-        /* Seamless Title Banner -> Over-the-Shoulder Camera Blend */
+        /* Seamless Title Banner -> first-person eye blend. The title camera
+         * sits at the operator's own eye height on the West Quay and pans
+         * slowly across the harbor; deploying hands the view to his eyes. */
         Camera render_cam = cam;
+        float hspd0 = hypotf(player.vel.x, player.vel.z);
+        float fov_t = aiming ? 1.22f
+                    : ((in.keys & K_SPRINT) && hspd0 > 3.0f ? 0.93f : 1.0f);
         if (title_blend > 0.001f) {
-            V3 hero_pos = v3(player.pos.x - 0.63f, player.pos.y + 1.38f, player.pos.z - 0.97f);
+            float tsec = (float)(now_s() - start);
+            Camera title_cam = { v3(player.pos.x, player.pos.y + 1.62f, player.pos.z),
+                                 -0.06f + sinf(tsec * 0.10f) * 0.24f,
+                                 0.02f + sinf(tsec * 0.063f) * 0.03f };
             float s = title_blend * title_blend * (3.0f - 2.0f * title_blend);
-            render_cam.pos   = v3(lerpf(cam.pos.x, hero_pos.x, s),
-                                  lerpf(cam.pos.y, hero_pos.y, s),
-                                  lerpf(cam.pos.z, hero_pos.z, s));
-            render_cam.yaw   = lerpf(cam.yaw, 0.22f, s);
-            render_cam.pitch = lerpf(cam.pitch, 0.02f, s);
-            fb->settings.fov_scale = lerpf(aiming ? 1.22f : 1.0f, 1.28f, s);
+            render_cam.pos   = v3(lerpf(cam.pos.x, title_cam.pos.x, s),
+                                  lerpf(cam.pos.y, title_cam.pos.y, s),
+                                  lerpf(cam.pos.z, title_cam.pos.z, s));
+            render_cam.yaw   = lerpf(cam.yaw, title_cam.yaw, s);
+            render_cam.pitch = lerpf(cam.pitch, title_cam.pitch, s);
+            fb->settings.fov_scale = lerpf(fov_t, 1.05f, s);
         } else {
-            fb->settings.fov_scale = aiming ? 1.22f : 1.0f;
+            fb->settings.fov_scale = fov_t;
         }
 
         double r0 = now_s();
@@ -619,49 +616,17 @@ int main(int argc, char **argv) {
             render_blob_shadow(fb, &render_cam, &sc.shadow_quad, &sc.tex[TEX_SHADOW], guards[i].pos, 0.58f);
         render_blob_shadow(fb, &render_cam, &sc.shadow_quad, &sc.tex[TEX_SHADOW], walker.pos, 1.25f);
 
-        /* Operator full-body animation state machine */
-        float hspd = hypotf(player.vel.x, player.vel.z);
-        Pose op;
-        if (title_active || title_blend > 0.5f) {
-            op = anim_sample(&CLIP_AIM, tt * 0.65f);
-            op.head_yaw   = (render_cam.yaw + PS15_PI) - char_yaw;
-            op.head_pitch = 0.04f;
-        } else if (slide_timer > 0.0f) {
-            op = anim_sample(&CLIP_CROUCH, tt);
-            op.crouch = 1.0f; op.lean = -0.32f; op.leg_r = -0.95f; op.knee_r = 0.15f;
-        } else if (crouched) {
-            op = anim_sample(&CLIP_CROUCH, hspd > 0.2f ? tt * 1.5f : 0.0f);
-        } else if (wall_running) {
-            op = anim_sample(&CLIP_RUN, tt * 1.6f);
-            op.lean = 0.24f;
-        } else if (hspd > 4.3f) {
-            op = anim_sample(&CLIP_RUN, tt * 1.35f);
-        } else if (hspd > 0.25f) {
-            op = anim_sample(&CLIP_WALK, tt * 1.6f);
-        } else {
-            op = anim_sample(&CLIP_IDLE, tt);
-        }
-        if (!title_active && (aiming || recoil > 0.05f || showcase_front)) {
-            Pose ap = anim_sample(&CLIP_AIM, tt);
-            op.arm_l = ap.arm_l - cam_pitch * 0.55f;
-            op.arm_r = ap.arm_r - cam_pitch * 0.55f - recoil * 0.22f;
-            op.elbow_l = ap.elbow_l;
-            op.elbow_r = ap.elbow_r;
-            op.aim = 1.0f;
-            op.head_yaw = clampf(cam_yaw - char_yaw, -0.6f, 0.6f);
-        }
+        /* First person: the operator's body is never drawn — the camera is
+         * his eyes. His presence in the world is his contact shadow (above),
+         * his viewmodel (drawn after the world and post), and what the light
+         * field does to both. The grapple rope leaves the viewmodel
+         * launcher's muzzle. */
         if (player.grappling) {
-            op.arm_r = -2.35f; op.arm_l = -2.05f; op.aim = 0.0f;
-        }
-        render_humanoid(fb, &render_cam, disguised ? &soldier : &oper,
-                        player.pos, char_yaw, &op,
-                        sc.tex, 1.0f, 1.0f, 1.02f, &sc.rig);
-
-        if (player.grappling) {
-            V3 hand = v3(player.pos.x + sinf(char_yaw) * 0.25f,
-                         player.pos.y + 1.52f,
-                         player.pos.z + cosf(char_yaw) * 0.25f);
-            greyport_render_grapple(fb, &sc, &render_cam, hand, player.grapple_anchor);
+            V3 fw, rt, up;
+            vm_basis(&render_cam, &fw, &rt, &up);
+            V3 muzzle = v3_add(render_cam.pos, v3_add(v3_scale(fw, 0.72f),
+                                v3_add(v3_scale(rt, 0.02f), v3_scale(up, -0.16f))));
+            greyport_render_grapple(fb, &sc, &render_cam, muzzle, player.grapple_anchor);
         }
 
         /* Regime troopers + autonomous Type-1 Patrol Mecha */
@@ -689,6 +654,16 @@ int main(int argc, char **argv) {
             fb_apply_visor(fb, tt);
         } else if (fb->settings.profile == GFX_PS2) {
             fb_bloom(fb, 0.70f, 0.32f);
+        }
+
+        if (!title_active && !show_dossier) {
+            float hspd_vm = hypotf(player.vel.x, player.vel.z);
+            float bob_amp = hspd_vm < 0.25f ? 0.0f :
+                            crouched ? 0.25f :
+                            (in.keys & K_SPRINT) ? 1.0f : 0.55f;
+            render_viewmodel_ex(fb, &render_cam, &vm, sc.tex, &sc.rig,
+                                bob_ph, bob_amp, cam_pitch,
+                                crouched, player.grappling, recoil);
         }
 
         if (title_active) {
@@ -743,8 +718,8 @@ int main(int argc, char **argv) {
                 }
             }
 
-            /* Over-the-shoulder reticle + dynamic hitmarker */
-            if (!showcase_front) {
+            /* Centered reticle + dynamic hitmarker */
+            {
                 int cx = FB_W / 2, cy = FB_H / 2;
                 int gap = aiming ? 3 : 5;
                 uint32_t rc = aiming ? 0xffbe3cu : 0x94a8c8u;
@@ -855,7 +830,7 @@ int main(int argc, char **argv) {
     plat_close(plat);
     fb_free(fb);
     mecha_mesh_free(&mmesh);
-    humanoid_free(&oper);
+    viewmodel_free(&vm);
     humanoid_free(&soldier);
     greyport_free(&sc);
     return 0;
